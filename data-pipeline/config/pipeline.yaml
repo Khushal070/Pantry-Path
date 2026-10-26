@@ -20,6 +20,8 @@ paths:
   output: data/processed/off_products.parquet
   country_tag: en:united-states
   keep_raw: false             # delete the ~8 GB dump after filtering
+  ingredient_languages: [en]  # drop products whose ingredient text is in another language
+                              # (diet_rules reads English only, so they'd always be unknown)
   min_raw_bytes: 1000000000   # a smaller download is treated as corrupt
   download_attempts: 3
   retry_wait_s: 30            # first wait between download attempts (doubles each time)
@@ -94,6 +96,28 @@ catalog:
   merge_candidates: 15        # more popular look-alike dishes shown to the LLM for merge_into
   merge_min_score: 50         # rapidfuzz token_set_ratio needed to count as a look-alike
 
+# Catalog evaluation against hand-written reference recipes (step eval-catalog)
+catalog_eval:
+  splits:
+    dev: ../data/golden/recipes.json            # looked at while building the pipeline
+    test: ../data/golden/recipes_heldout.json   # held out: written 2026-10-26, after the
+                                                # catalog was frozen
+  dish_ids:                   # reference dish -> catalog dish_id when no name or alias matches
+    beef stew with red wine: beef-stew
+    salmon avocado sushi rolls: california-roll
+  # The refine prompt leaves these out on purpose (every kitchen has them)
+  skip_ingredients: [water, ice, salt, black pepper]
+  # Names that mean the same thing at the store (each group maps to its first name).
+  # Tuned on the dev split only, so the test split stays held out.
+  synonyms:
+    - [lemon, lemon juice]
+    - [lime, lime juice]
+    - [egg, egg yolk, egg white]
+    - [beef chuck, beef stew meat]
+  min_recall_warn: 0.75       # held-out recall below this alerts (never fails the run)
+  output_json: reports/catalog_eval.json
+  output_md: reports/catalog_eval.md
+
 # LLM used to refine dishes (and for request-time fallback). Any provider works:
 # set LLM_API_KEY in .env; LLM_PROVIDER / LLM_MODEL there override the values below.
 llm:
@@ -165,6 +189,10 @@ bias:
   labelled_sample_size: 40000  # products with a ground-truth label or fact (0 = all)
   min_slice_size: 30           # smaller groups are shown but left out of gap numbers
   popularity_bins: [0, 1, 10]  # unique scans: 0 | 1-9 | 10+
+  # Barcodes diet_rules was tuned on (the 2026-10-24 snapshot). Labelled products that
+  # later snapshots add are scored as a held-out set. Rerun `freeze-seen-products` after
+  # changing the rules while looking at newer products.
+  seen_products: data/eval/diet_rules_seen_barcodes.parquet
   store_brands:
     - kroger
     - private selection

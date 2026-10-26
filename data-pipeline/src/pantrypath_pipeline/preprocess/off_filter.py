@@ -7,7 +7,9 @@ statement or declared allergens): ~460k rows, ~90 MB instead of 8 GB. Along the 
   request flow uses), and rows whose code isn't a valid retail barcode are dropped;
 - product names and ingredient statements are lists of {lang, text}: we keep the
   English text, else the product's main-language text, else the first non-empty one,
-  and record that language in ingredients_lang (the diet rules read English only);
+  and record that language in ingredients_lang. The diet rules read English only, so
+  products whose ingredient text is in another language are dropped (off.ingredient_languages;
+  ~0.5% of US products, but a batch of Norwegian ones arrived in late October 2026);
 - text is cleaned for keyword matching: Open Food Facts marks allergens with HTML
   (<span class="allergen">Milk</span>, ~23% of statements) or underscores (_milk_,
   which a \\bmilk\\b search would miss), and some texts carry HTML entities (&quot;);
@@ -108,6 +110,14 @@ def _select_sql(has_analysis_tags: bool) -> str:
     """
 
 
+# Keep a product when its ingredient text is in a language the diet rules read. Products
+# without text (allergen tags only) are kept: the tags don't depend on the language.
+def language_ok(languages: list[str]) -> str:
+    """SQL condition: no ingredient text, or text in one of these languages."""
+    quoted = ", ".join("'" + lang.replace("'", "''") + "'" for lang in languages)
+    return f"(ingredients_text IS NULL OR list_contains([{quoted}], ingredients_lang))"
+
+
 def _sql_path(path: Path) -> str:
     """A path quoted for a SQL string literal (COPY and SET don't take parameters)."""
     return str(path).replace("'", "''")
@@ -149,8 +159,10 @@ def run(cfg: Config, **_: object) -> dict:
         f"CREATE TEMP TABLE evidence AS {_select_sql(has_analysis)}",
         {"raw": str(raw), "country": off["country_tag"]},
     )
-    evidence_rows, invalid = con.execute(
-        "SELECT count(*), count(*) FILTER (WHERE barcode IS NULL) FROM evidence"
+    keep = language_ok(list(off.get("ingredient_languages") or ["en"]))
+    evidence_rows, invalid, other_language = con.execute(
+        "SELECT count(*), count(*) FILTER (WHERE barcode IS NULL), "
+        f"count(*) FILTER (WHERE barcode IS NOT NULL AND NOT {keep}) FROM evidence"
     ).fetchone()
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -160,7 +172,7 @@ def run(cfg: Config, **_: object) -> dict:
     con.execute(f"""
         COPY (
             SELECT {columns} FROM evidence
-            WHERE barcode IS NOT NULL
+            WHERE barcode IS NOT NULL AND {keep}
             QUALIFY row_number() OVER (
                 PARTITION BY barcode
                 ORDER BY unique_scans_n DESC, last_modified_t DESC NULLS LAST, code
@@ -176,7 +188,8 @@ def run(cfg: Config, **_: object) -> dict:
         "rows": rows,
         "evidence_rows": evidence_rows,
         "invalid_barcodes": invalid,
-        "duplicates_removed": evidence_rows - invalid - rows,
+        "other_language_removed": other_language,
+        "duplicates_removed": evidence_rows - invalid - other_language - rows,
         "bytes": output.stat().st_size,
         "seconds": round(time.monotonic() - started, 1),
         "raw_deleted": _maybe_delete_raw(raw, rows, off),

@@ -29,7 +29,7 @@ PARALLEL_TASKS = {
     "download_off", "filter_off", "validate_off",
     "download_foodcom", "clean_recipes", "group_dishes", "select_dishes", "dish_ids",
     "pull_llm_cache",
-    "refine_dish", "assemble_catalog", "validate_catalog",
+    "refine_dish", "assemble_catalog", "validate_catalog", "eval_catalog",
     "load_sqlite", "compute_stats", "check_drift", "bias_report", "dvc_version", "notify",
 }
 # The serial DAG's chain, and scripts/run_all.sh's order (with refine-all for refine-dish)
@@ -162,8 +162,9 @@ def test_parallel_dag_graph(dagbag):
     assert up["dish_ids"] == {"select_dishes"} and up["pull_llm_cache"] == set()
     assert up["refine_dish"] == {"dish_ids", "pull_llm_cache"}  # saved replies first
     assert up["assemble_catalog"] == {"refine_dish"}
+    assert up["eval_catalog"] == {"validate_catalog"}
     # ...that join before loading
-    assert up["load_sqlite"] == {"validate_off", "validate_catalog"}
+    assert up["load_sqlite"] == {"validate_off", "eval_catalog"}
     tail = ["load_sqlite", "compute_stats", "check_drift", "bias_report", "dvc_version",
             "notify"]
     for before, after in zip(tail, tail[1:], strict=False):

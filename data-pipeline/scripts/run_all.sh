@@ -15,7 +15,7 @@ PYTHON="${PYTHON:-.venv/bin/python}"
 STEPS=(
   download-off filter-off validate-off
   download-foodcom clean-recipes group-dishes select-dishes pull-llm-cache refine-all
-  assemble-catalog validate-catalog
+  assemble-catalog validate-catalog eval-catalog
   load-sqlite compute-stats check-drift bias-report dvc-version notify
 )
 

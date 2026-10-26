@@ -1,13 +1,13 @@
 # Bias report: data slicing
 
-_Generated 2026-10-25 01:51 UTC by `python -m pantrypath_pipeline bias-report`. Every number and finding is recomputed on each run._
+_Generated 2026-10-26 19:31 UTC by `python -m pantrypath_pipeline bias-report`. Every number and finding is recomputed on each run._
 
 Pantry Path trains no model in this phase. Two parts of the pipeline make decisions that could serve some groups worse than others:
 
 1. the **dish catalog**: which cuisines get dishes, and how much data backs each dish;
 2. **diet_rules**, which marks every product *safe*, *unsafe* or *unknown* for a user. It is the "model" evaluated here, on slices of products.
 
-**In one line:** Ingredient-text fallback and name/category checks cut diet_rules' unknown rate from 77% to 1.0% (false safe 0.0% → 0.4%); the widest gap left is by category group: plant based substitutes 3.7% vs meals 0.3% unknown.
+**In one line:** Ingredient-text fallback and name/category checks cut diet_rules' unknown rate from 77% to 0.6% (false safe 0.0% → 0.4%); the widest gap left is by category group: bakery cereals 2.9% vs pantry condiments 0.1% unknown.
 
 ## Findings
 
@@ -15,13 +15,14 @@ Pantry Path trains no model in this phase. Two parts of the pipeline make decisi
 - Catalog after mitigation (cuisine quotas): 100 dishes, 60% American (target 60%).
 - Every cuisine reached its quota.
 - Data behind each dish: other cuisines rest on a median of 51 Food.com recipes (American: 127); 3.3% of their ingredients were added by the LLM (American: 3.8%).
-- Coverage: on a fixed sample of 20,000 products, diet_rules could not decide 77% of verdicts from allergen tags alone; reading the ingredient text brings this to 1.1%, and the name/category checks to 1.0%.
+- Coverage: on a fixed sample of 20,000 products, diet_rules could not decide 77% of verdicts from allergen tags alone; reading the ingredient text brings this to 0.6%, and the name/category checks to 0.6%.
 - Dangerous errors: products known to be unsafe were marked safe 0.0% of the time with tags only, 2.2% with the ingredient text, and 0.4% with the full rules.
-- Usefulness: the rules confirm 0% of labelled-safe products as safe before (tags alone never prove a product safe) and 95% after; when they decide, they match the labels 100% → 99% of the time.
-- By category group, the unknown rate differs by up to 3.4 pts between groups with the full rules (plant based substitutes 3.7% vs meals 0.3%), narrower than the 46 pts gap with tags only; in plant based substitutes the gluten free user is affected most (6.9% unknown).
-- By brand type (store vs national), the unknown rate differs by up to 0.6 pts between groups with the full rules (national brand 1.3% vs store brand 0.7%), narrower than the 3.0 pts gap with tags only; in national brand the gluten free user is affected most (2.5% unknown).
-- By popularity (Open Food Facts scans), the unknown rate differs by up to 3.3 pts between groups with the full rules (10+ scans 4.0% vs 0 scans 0.7%), narrower than the 5.5 pts gap with tags only; in 10+ scans the gluten free user is affected most (7.2% unknown).
-- Highest false-safe slice with the full rules: pantry condiments (category group), 1.7% of 1,228 unsafe verdicts.
+- Usefulness: the rules confirm 0% of labelled-safe products as safe before (tags alone never prove a product safe) and 96% after; when they decide, they match the labels 100% → 99% of the time.
+- By category group, the unknown rate differs by up to 2.8 pts between groups with the full rules (bakery cereals 2.9% vs pantry condiments 0.1%), narrower than the 46 pts gap with tags only; in bakery cereals the gluten free user is affected most (8.4% unknown).
+- By brand type (store vs national), the unknown rate differs by up to 0.1 pts between groups with the full rules (national brand 0.7% vs store brand 0.5%), narrower than the 3.0 pts gap with tags only; in national brand the gluten free user is affected most (1.9% unknown).
+- By popularity (Open Food Facts scans), the unknown rate differs by up to 1.3 pts between groups with the full rules (10+ scans 1.8% vs 0 scans 0.6%), narrower than the 5.6 pts gap with tags only; in 10+ scans the gluten free user is affected most (5.5% unknown).
+- Highest false-safe slice with the full rules: pantry condiments (category group), 1.7% of 1,235 unsafe verdicts.
+- Held out: 0 labelled products added since the seen list was frozen on 2026-10-26; too few to score yet (the set grows weekly).
 
 ## 1. Dish catalog by cuisine
 
@@ -54,7 +55,7 @@ Largest gaps between cuisines: 4.6 ingredients per dish, 6.7 pts in LLM-added sh
 
 ### How it was measured
 
-- **Data:** the Open Food Facts US snapshot (411,910 products with ingredient or allergen data). Coverage uses a fixed sample of 20,000 products; correctness uses 40,000 products that may have a ground truth (seed 42: the same products every run). This is a fixed sample, not a held-out test set (see Limitations).
+- **Data:** the Open Food Facts US snapshot (410,009 products with ingredient or allergen data). Coverage uses a fixed sample of 20,000 products; correctness uses 40,000 products that may have a ground truth (seed 42: the same products every run). This is a fixed sample, not a held-out test set (see Limitations); the held-out check below scores only products the rules were never tuned on.
 - **Users:** vegan, vegetarian, and avoiding gluten.
 - **Ground truth (evaluation only, never read by the rules):** safe = the product carries the claim (`en:vegan`; `en:vegetarian` or `en:vegan`; `en:no-gluten`). Unsafe = a clear fact: an animal category (meat, fish, seafood; for vegans also dairy, eggs, honey) or the gluten allergen tag. A fact contradicted by a claim or by the product name or brand ("veggie burger" under meats, "gluten-free" with a gluten tag) is a conflict and left out; categories for plant-based versions (substitutes, alternatives, vegan, …) never count as animal.
 - **Before / after:** *tags only* = allergen and trace tags only (before); *+ text* = tags + ingredient text; *full* = tags + ingredient text + name and category checks (after, used by the pipeline).
@@ -63,9 +64,9 @@ Largest gaps between cuisines: 4.6 ingredients per dish, 6.7 pts in LLM-added sh
 
 | User | Safe (label claim) | Unsafe (fact) | Conflicts left out |
 |---|---|---|---|
-| vegan | 2,239 | 10,921 | 187 |
-| vegetarian | 2,387 | 4,578 | 93 |
-| gluten free | 5,536 | 23,689 | 206 |
+| vegan | 2,211 | 10,927 | 188 |
+| vegetarian | 2,355 | 4,591 | 93 |
+| gluten free | 5,536 | 23,721 | 203 |
 
 ### Overall
 
@@ -73,10 +74,16 @@ Each cell: tags only → + ingredient text → full rules.
 
 | User | Unknown (all products) | Accuracy when decided | False safe | Safe found |
 |---|---|---|---|---|
-| vegan | 62% → 0.4% → 0.4% | 99% → 96% → 98% | 0.0% → 4.1% → 1.1% | 0% → 93% → 93% |
-| vegetarian | 92% → 0.5% → 0.5% | 100% → 94% → 99% | 0.0% → 8.4% → 0.2% | 0% → 97% → 96% |
-| gluten free | 76% → 2.2% → 2.2% | 100% → 100% → 100% | 0.0% → 0.1% → 0.1% | 0% → 95% → 95% |
-| all users | 77% → 1.1% → 1.0% | 100% → 98% → 99% | 0.0% → 2.2% → 0.4% | 0% → 95% → 95% |
+| vegan | 62% → 0.0% → 0.0% | 99% → 96% → 98% | 0.0% → 4.1% → 1.1% | 0% → 95% → 95% |
+| vegetarian | 92% → 0.0% → 0.0% | 100% → 94% → 99% | 0.0% → 8.5% → 0.2% | 0% → 99% → 98% |
+| gluten free | 77% → 1.8% → 1.8% | 100% → 100% → 100% | 0.0% → 0.1% → 0.1% | 0% → 95% → 96% |
+| all users | 77% → 0.6% → 0.6% | 100% → 98% → 99% | 0.0% → 2.2% → 0.4% | 0% → 96% → 96% |
+
+### Held-out check: products added after the rules were frozen
+
+diet_rules was tuned on the products whose 411,910 barcodes were frozen as seen (last freeze 2026-10-26). Products a later snapshot adds were never looked at, so the labelled ones among them are a true held-out test. The set starts empty and grows with every weekly snapshot.
+
+**0 held-out products in this snapshot** (it is the frozen one).
 
 ### Coverage by slice (unknown rate, all users)
 
@@ -84,33 +91,33 @@ Each cell: tags only → + ingredient text → full rules.
 
 | Group | Products | Unknown: tags → + text → full |
 |---|---|---|
-| plant based substitutes | 173 | 85% → 3.7% → 3.7% |
-| meat seafood | 919 | 60% → 0.4% → 0.3% |
-| dairy eggs | 1,159 | 70% → 0.8% → 0.8% |
-| meals | 772 | 51% → 0.4% → 0.3% |
-| snacks sweets | 5,049 | 71% → 1.2% → 1.1% |
-| bakery cereals | 1,336 | 69% → 3.4% → 3.4% |
-| beverages | 1,603 | 97% → 1.0% → 1.0% |
-| pantry condiments | 2,111 | 90% → 0.4% → 0.4% |
-| produce legumes nuts | 938 | 98% → 0.8% → 0.8% |
-| other | 1,185 | 69% → 1.4% → 1.4% |
-| uncategorized | 4,755 | 78% → 0.8% → 0.8% |
+| plant based substitutes | 170 | 85% → 1.8% → 1.8% |
+| meat seafood | 920 | 60% → 0.1% → 0.1% |
+| dairy eggs | 1,160 | 70% → 0.3% → 0.3% |
+| meals | 773 | 51% → 0.2% → 0.2% |
+| snacks sweets | 5,053 | 71% → 0.8% → 0.8% |
+| bakery cereals | 1,334 | 69% → 2.9% → 2.9% |
+| beverages | 1,598 | 97% → 0.2% → 0.2% |
+| pantry condiments | 2,113 | 90% → 0.1% → 0.1% |
+| produce legumes nuts | 935 | 98% → 0.2% → 0.2% |
+| other | 1,176 | 69% → 0.7% → 0.7% |
+| uncategorized | 4,768 | 78% → 0.5% → 0.5% |
 
 **By brand type (store vs national)**
 
 | Group | Products | Unknown: tags → + text → full |
 |---|---|---|
-| store brand | 2,001 | 77% → 0.7% → 0.7% |
-| national brand | 11,820 | 78% → 1.3% → 1.3% |
-| no brand | 6,179 | 75% → 0.7% → 0.7% |
+| store brand | 2,008 | 77% → 0.5% → 0.5% |
+| national brand | 11,791 | 78% → 0.7% → 0.7% |
+| no brand | 6,201 | 75% → 0.6% → 0.6% |
 
 **By popularity (Open Food Facts scans)**
 
 | Group | Products | Unknown: tags → + text → full |
 |---|---|---|
-| 0 scans | 15,558 | 76% → 0.7% → 0.7% |
-| 1-9 scans | 4,275 | 79% → 2.1% → 2.1% |
-| 10+ scans | 167 | 81% → 4.0% → 4.0% |
+| 0 scans | 15,609 | 76% → 0.6% → 0.6% |
+| 1-9 scans | 4,228 | 79% → 0.8% → 0.8% |
+| 10+ scans | 163 | 81% → 1.8% → 1.8% |
 
 ### Correctness by slice (labelled products, all users)
 
@@ -120,33 +127,33 @@ Each cell: tags only → full rules.
 
 | Group | Verdicts | Accuracy | False safe | Safe found |
 |---|---|---|---|---|
-| plant based substitutes | 575 | 98% → 99% | 0.0% → 0.0% | 0% → 94% |
-| meat seafood | 10,030 | 100% → 100% | 0.0% → 0.2% | 0% → 99% |
-| dairy eggs | 6,579 | 100% → 99% | 0.0% → 1.4% | 0% → 96% |
-| meals | 2,595 | 100% → 99% | 0.0% → 0.0% | 0% → 93% |
-| snacks sweets | 10,397 | 100% → 99% | 0.0% → 0.1% | 0% → 95% |
-| bakery cereals | 5,271 | 100% → 100% | 0.0% → 0.0% | 0% → 91% |
-| beverages | 638 | 97% → 99% | 0.0% → 0.0% | 0% → 97% |
-| pantry condiments | 2,276 | 99% → 98% | 0.0% → 1.7% | 0% → 95% |
-| produce legumes nuts | 450 | 98% → 99% | 0.0% → 0.0% | 0% → 96% |
-| other | 2,929 | 99% → 99% | 0.0% → 0.1% | 0% → 95% |
-| uncategorized | 7,610 | 100% → 99% | 0.0% → 0.0% | 0% → 95% |
+| plant based substitutes | 562 | 98% → 99% | 0.0% → 0.0% | 0% → 97% |
+| meat seafood | 10,065 | 100% → 100% | 0.0% → 0.2% | 0% → 99% |
+| dairy eggs | 6,569 | 100% → 99% | 0.0% → 1.5% | 0% → 97% |
+| meals | 2,599 | 100% → 99% | 0.0% → 0.0% | 0% → 94% |
+| snacks sweets | 10,381 | 100% → 99% | 0.0% → 0.1% | 0% → 96% |
+| bakery cereals | 5,267 | 100% → 100% | 0.0% → 0.0% | 0% → 92% |
+| beverages | 632 | 96% → 99% | 0.0% → 0.0% | 0% → 98% |
+| pantry condiments | 2,255 | 99% → 98% | 0.0% → 1.7% | 0% → 98% |
+| produce legumes nuts | 442 | 98% → 99% | 0.0% → 0.0% | 0% → 99% |
+| other | 2,923 | 99% → 99% | 0.0% → 0.1% | 0% → 95% |
+| uncategorized | 7,646 | 100% → 99% | 0.0% → 0.0% | 0% → 96% |
 
 **By brand type (store vs national)**
 
 | Group | Verdicts | Accuracy | False safe | Safe found |
 |---|---|---|---|---|
-| store brand | 5,336 | 100% → 100% | 0.0% → 0.3% | 0% → 98% |
-| national brand | 29,541 | 100% → 99% | 0.0% → 0.4% | 0% → 94% |
-| no brand | 14,473 | 100% → 100% | 0.0% → 0.3% | 0% → 96% |
+| store brand | 5,360 | 100% → 100% | 0.0% → 0.3% | 0% → 98% |
+| national brand | 29,442 | 100% → 99% | 0.0% → 0.5% | 0% → 96% |
+| no brand | 14,539 | 100% → 100% | 0.0% → 0.3% | 0% → 96% |
 
 **By popularity (Open Food Facts scans)**
 
 | Group | Verdicts | Accuracy | False safe | Safe found |
 |---|---|---|---|---|
-| 0 scans | 35,162 | 100% → 99% | 0.0% → 0.3% | 0% → 95% |
-| 1-9 scans | 13,442 | 99% → 99% | 0.0% → 0.6% | 0% → 95% |
-| 10+ scans | 746 | 97% → 98% | 0.0% → 0.7% | 0% → 94% |
+| 0 scans | 35,278 | 100% → 99% | 0.0% → 0.3% | 0% → 96% |
+| 1-9 scans | 13,342 | 99% → 99% | 0.0% → 0.6% | 0% → 96% |
+| 10+ scans | 721 | 97% → 98% | 0.0% → 0.7% | 0% → 96% |
 
 ### Largest gaps between slices
 
@@ -154,9 +161,9 @@ Fairlearn `MetricFrame.difference()` (max - min across groups), tags only → fu
 
 | Slicing | Unknown rate | Accuracy when decided | False safe |
 |---|---|---|---|
-| category group | 46 pts → 3.4 pts (plant based substitutes 3.7% vs meals 0.3%) | 3.2 pts → 1.4 pts (bakery cereals 100% vs pantry condiments 98%) | 0.0 pts → 1.7 pts (pantry condiments 1.7% vs bakery cereals 0%) |
-| brand type (store vs national) | 3.0 pts → 0.6 pts (national brand 1.3% vs store brand 0.7%) | 0.3 pts → 0.4 pts (store brand 100% vs national brand 99%) | 0.0 pts → 0.2 pts (national brand 0.4% vs store brand 0.3%) |
-| popularity (Open Food Facts scans) | 5.5 pts → 3.3 pts (10+ scans 4.0% vs 0 scans 0.7%) | 3.0 pts → 1.2 pts (0 scans 99% vs 10+ scans 98%) | 0.0 pts → 0.4 pts (10+ scans 0.7% vs 0 scans 0.3%) |
+| category group | 46 pts → 2.8 pts (bakery cereals 2.9% vs pantry condiments 0.1%) | 3.5 pts → 1.4 pts (bakery cereals 100% vs pantry condiments 98%) | 0.0 pts → 1.7 pts (pantry condiments 1.7% vs bakery cereals 0%) |
+| brand type (store vs national) | 3.0 pts → 0.1 pts (national brand 0.7% vs store brand 0.5%) | 0.3 pts → 0.4 pts (store brand 100% vs national brand 99%) | 0.0 pts → 0.2 pts (national brand 0.5% vs store brand 0.3%) |
+| popularity (Open Food Facts scans) | 5.6 pts → 1.3 pts (10+ scans 1.8% vs 0 scans 0.6%) | 3.3 pts → 1.3 pts (0 scans 99% vs 10+ scans 98%) | 0.0 pts → 0.4 pts (10+ scans 0.7% vs 0 scans 0.3%) |
 
 ### Disagreements: ground truth unsafe, rules say safe
 
@@ -205,12 +212,12 @@ First five per user. Many are label errors: products claiming vegan or gluten-fr
 ## 3. Mitigation and trade-offs
 
 - **Catalog: cuisine quotas** (`catalog.quotas`). The catalog is 60% American, down from 74% American or untagged in a plain top 100. Trade-off: the quotas pull in dishes backed by fewer source recipes (median 51 vs 127 for American dishes), so their ingredient shares rest on less data.
-- **diet_rules: ingredient-text fallback and name/category checks.** The unknown rate drops from 77% to 1.0% and labelled-safe products confirmed as safe rise from 0% to 95%. Trade-off: deciding more products costs some safety: the false-safe rate rises from 0.0% to 0.4% (4 more per 1,000 unsafe products). Ingredient text alone would mark 2.2% of unsafe products safe (e.g. cure-only bacon lists no meat); the name/category check brings this down to 0.4%.
+- **diet_rules: ingredient-text fallback and name/category checks.** The unknown rate drops from 77% to 0.6% and labelled-safe products confirmed as safe rise from 0% to 96%. Trade-off: deciding more products costs some safety: the false-safe rate rises from 0.0% to 0.4% (4 more per 1,000 unsafe products). Ingredient text alone would mark 2.2% of unsafe products safe (e.g. cure-only bacon lists no meat); the name/category check brings this down to 0.4%.
 - **Not applied:** re-sampling, re-weighting and threshold tuning are levers for trained models; diet_rules has no training data and no score threshold. The equivalent safeguard is kept instead: unknown is never shown as safe, so a slice with more unknowns gets fewer suggestions, never less safe ones.
 
 ## 4. Limitations
 
-- **Not a held-out evaluation.** While diet_rules was being built, its keyword rules were adjusted after looking at mismatches with these same Open Food Facts vegan, vegetarian and gluten-free labels on a ~47k-product sample of this snapshot (for example, recall on vegan-labelled products rose from 91.3% to 92.7%). The fixed sample used here overlaps that data, so accuracy and safe-found numbers are likely optimistic. A fair estimate needs a held-out set of products nobody looked at while writing the rules.
+- **Not a held-out evaluation.** While diet_rules was being built, its keyword rules were adjusted after looking at mismatches with these same Open Food Facts vegan, vegetarian and gluten-free labels on a ~47k-product sample of this snapshot (for example, recall on vegan-labelled products rose from 91.3% to 92.7%). The fixed sample used here overlaps that data, so accuracy and safe-found numbers are likely optimistic. The fair estimate is the held-out check: products added to Open Food Facts after the snapshot the rules were tuned on (its barcodes are frozen in `bias.seen_products`). It starts empty and grows with each weekly snapshot; rerun `freeze-seen-products` whenever the rules are changed after looking at newer products, or the check stops being held out.
 - **Label noise.** Open Food Facts claims are not always right: some products labelled vegan or gluten-free list eggs, chicken stock or wheat (see the disagreement tables). Such products count against the rules when the rules are actually right, and a category or tag error does the same in the other direction.
 - Labels are self-reported packaging claims entered by Open Food Facts contributors. Brands that market to vegan or gluten-free shoppers carry them more often, so the labelled set is not a random sample of products.
 - "Unsafe" is a proxy. Open Food Facts categories and tags have errors (meat-free burgers filed under meats); products whose name or brand contradicts the fact are left out, but some errors remain, so part of the false-safe rate is label noise. Gluten negatives come from the same allergen tags the rules read, so every mode scores close to perfect on them by construction. Vegan and vegetarian negatives come from categories, which only the full mode reads: its false-safe numbers on them are a lower bound.

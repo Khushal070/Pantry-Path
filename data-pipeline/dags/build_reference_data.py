@@ -7,8 +7,8 @@ Two branches run in parallel, then join:
                       -> dish_ids -> refine_dish (one mapped task per dish; LLM)
     Saved replies:    pull_llm_cache -> refine_dish (the LLM replies saved in DVC, so a
                       run replays them instead of calling the LLM again)
-                      -> assemble_catalog -> validate_catalog
-    then:             load_sqlite -> compute_stats -> check_drift -> bias_report
+                      -> assemble_catalog -> validate_catalog -> eval_catalog
+    then:            load_sqlite -> compute_stats -> check_drift -> bias_report
                       -> dvc_version -> notify
 
 Each task runs one pipeline step in the pipeline's own virtualenv
@@ -88,7 +88,7 @@ def build_dag(dag_id: str, *, serial: bool) -> DAG:
         ).expand(env=ids)
 
         catalog = [step("assemble-catalog", trigger_rule="all_done_min_one_success"),
-                   step("validate-catalog")]
+                   step("validate-catalog"), step("eval-catalog")]
         tail = [step(s) for s in ("load-sqlite", "compute-stats", "check-drift",
                                   "bias-report", "dvc-version", "notify")]
 

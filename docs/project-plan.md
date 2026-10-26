@@ -17,6 +17,41 @@ People with special diets (allergies, celiac, pregnancy, medical, religious, lif
 can't just buy groceries normally. Recipe → substitutions → label checks → store search →
 route planning today means juggling 4-5 disconnected tools.
 
+### How people shop for special diets today
+
+```mermaid
+flowchart TD
+    A["Wants a dish: 'quiche tonight'"] --> B["Find a recipe<br/>(recipe site or blog)"]
+    B --> C["Adapt it to the diet<br/>(search substitutions, forums)"]
+    C --> D["Write a shopping list<br/>(notes app or paper)"]
+    D --> E["Guess which store has each item<br/>(store websites and apps)"]
+    E --> F["At the shelf: read the ingredients<br/>and 'may contain' line of each product"]
+    F --> G{"Safe for my diet?"}
+    G -- "yes" --> H["Into the cart"]
+    G -- "no" --> I["Try another brand"]
+    G -- "label unclear" --> J["Look the ingredient up on the phone,<br/>or skip the product to be safe"]
+    J --> I
+    I --> K{"Another brand here?"}
+    K -- "yes" --> F
+    K -- "no" --> L["Another store<br/>(maps app, extra trip)"]
+    L --> F
+    H --> M{"List done?"}
+    M -- "no" --> F
+    M -- "yes" --> N["Cook"]
+```
+
+Where it hurts:
+- **Every product, every trip.** Labels change, so the shelf check (F to J) repeats on every
+  visit, and an unclear label is a guess: either risk it or give up the product.
+- **No tool sees the whole job.** The recipe site doesn't know the diet, the store app
+  doesn't know the recipe, and the maps app doesn't know which store has a safe version.
+- **Failures surface late.** You only learn a store has no safe option once you're
+  standing in it, which is what forces the extra trips.
+
+Pantry Path covers B to L in one chat: the recipe is adapted to the diet, products are
+checked by rules with their evidence shown, unclear products are marked unknown instead
+of safe, and the stores with safe options are known before anyone leaves home.
+
 ## Approach
 - A self-hosted open-weight LLM (for example Qwen2.5-7B-Instruct or Llama 3.1 8B Instruct)
   interprets the conversation and adapts the recipe. We start with prompting and structured
@@ -30,6 +65,11 @@ route planning today means juggling 4-5 disconnected tools.
 ## Model and LLMOps
 - Data: RecipeNLG and Food.com recipes, plus our own diet-adaptation and evaluation sets,
   split into train/validation/test by recipe.
+- Held-out evaluation sets, started in the data pipeline phase: reference recipes in a dev
+  split (16, used while building) and a held-out test split (27, written after the catalog
+  was frozen), scored against the dish catalog on every run; and a test set for the diet
+  rules that grows every week (labelled Open Food Facts products added after the rules were
+  frozen). The held-out recipes are the starting point for the model's test set.
 - Versioned data (for example DVC) and a model and prompt registry (for example MLflow).
 - Staged releases (dev → staging → production) with rollback.
 - Monitoring of model quality: valid output, parsing accuracy, latency and drift.

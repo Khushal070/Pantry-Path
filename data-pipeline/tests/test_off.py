@@ -119,12 +119,20 @@ def snapshot_rows(cfg):
 def test_filter_keeps_us_products_with_evidence(off_cfg, dump):
     summary = off_filter.run(off_cfg)
     rows = snapshot_rows(off_cfg)
-    assert set(rows) == {
-        EGGS, MILK_ONLY, "0036000291452", FRENCH, SPANISH, ENGLISH, NO_SCANS, MARKED_UP}
-    assert summary["rows"] == 8
+    # French and Spanish ingredient text: dropped (the diet rules read English only)
+    assert set(rows) == {EGGS, MILK_ONLY, "0036000291452", ENGLISH, NO_SCANS, MARKED_UP}
+    assert summary["rows"] == 6
     assert summary["evidence_rows"] == 12
     assert summary["invalid_barcodes"] == 2
+    assert summary["other_language_removed"] == 2
     assert summary["duplicates_removed"] == 2
+
+
+def test_filter_keeps_other_languages_when_configured(off_cfg, dump):
+    off_cfg.data["off"]["ingredient_languages"] = ["en", "fr", "es"]
+    summary = off_filter.run(off_cfg)
+    assert FRENCH in snapshot_rows(off_cfg) and SPANISH in snapshot_rows(off_cfg)
+    assert (summary["rows"], summary["other_language_removed"]) == (8, 0)
 
 
 def test_filter_cleans_markup_for_keyword_matching(off_cfg, dump):
@@ -166,6 +174,7 @@ def test_filter_dedup_keeps_most_scanned_then_newest(off_cfg, dump):
 
 
 def test_filter_picks_english_then_main_language(off_cfg, dump):
+    off_cfg.data["off"]["ingredient_languages"] = ["en", "fr", "es"]  # keep them to inspect
     off_filter.run(off_cfg)
     rows = snapshot_rows(off_cfg)
     assert (rows[ENGLISH]["ingredients_text"], rows[ENGLISH]["ingredients_lang"]) == (
@@ -357,6 +366,7 @@ def test_lookup_finds_any_barcode_form(off_cfg, dump):
 
 
 def test_lookup_drops_non_english_ingredient_text(off_cfg, dump):
+    off_cfg.data["off"]["ingredient_languages"] = ["en", "fr"]  # a snapshot that kept French
     off_filter.run(off_cfg)
     assert off_lookup.lookup(off_cfg, [FRENCH])[FRENCH].ingredients_text == ""
 

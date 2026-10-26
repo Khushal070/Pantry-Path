@@ -1,6 +1,6 @@
 {
   "suite": "off_schema",
-  "validated_at": "2026-10-25T01:43:06.177241+00:00",
+  "validated_at": "2026-10-26T19:29:42.046452+00:00",
   "rows": 0,
   "success": true,
   "critical_failures": 0,
@@ -109,7 +109,7 @@
         "batch_data": "PandasDataFrame"
       },
       "batch_markers": {
-        "ge_load_time": "20261025T014306.168814Z",
+        "ge_load_time": "20261026T192942.022942Z",
         "pandas_data_fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
       },
       "active_batch_definition": {

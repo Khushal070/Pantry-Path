@@ -1,6 +1,6 @@
 {
   "off_ingredients_text_length": {
-    "count": 88,
+    "count": 87,
     "low": null,
     "high": 2632.071956881292,
     "examples": [
@@ -60,7 +60,7 @@
   },
   "catalog_recipe_count": {
     "count": 0,
-    "low": 3.8638135823943527,
+    "low": 3.863813582394353,
     "high": 1573.5795752672875,
     "examples": []
   }

@@ -1,0 +1,775 @@
+{
+  "generated_at": "2026-10-26 19:15 UTC",
+  "status": "ok",
+  "min_recall_warn": 0.75,
+  "problems": [],
+  "splits": {
+    "dev": {
+      "recipes": 16,
+      "dishes_scored": 16,
+      "dishes_not_in_catalog": [],
+      "recall": 0.9113,
+      "recall_without_llm": 0.879,
+      "core_precision": 0.8289,
+      "dishes_fully_covered": 7,
+      "totals": {
+        "required": 124,
+        "found": 113,
+        "found_without_llm": 109,
+        "core": 76,
+        "core_in_reference": 63
+      },
+      "dishes": [
+        {
+          "dish": "Quiche Lorraine",
+          "dish_id": "quiche-lorraine",
+          "cuisine": "european",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 6,
+          "core": 4,
+          "core_in_reference": 3,
+          "missed": [],
+          "missed_without_llm": [
+            "pie crust"
+          ],
+          "core_not_in_reference": [
+            "swiss cheese"
+          ]
+        },
+        {
+          "dish": "Pad Thai",
+          "dish_id": "pad-thai",
+          "cuisine": "east_se_asian",
+          "required": 11,
+          "found": 11,
+          "found_without_llm": 9,
+          "core": 7,
+          "core_in_reference": 6,
+          "missed": [],
+          "missed_without_llm": [
+            "rice noodles",
+            "vegetable oil"
+          ],
+          "core_not_in_reference": [
+            "garlic"
+          ]
+        },
+        {
+          "dish": "Chicken Tikka Masala",
+          "dish_id": "chicken-tikka-masala",
+          "cuisine": "south_asian",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 8,
+          "core_in_reference": 6,
+          "missed": [
+            "chicken thighs"
+          ],
+          "missed_without_llm": [
+            "chicken thighs"
+          ],
+          "core_not_in_reference": [
+            "ground cumin",
+            "boneless skinless chicken breast"
+          ]
+        },
+        {
+          "dish": "Beef Lasagna",
+          "dish_id": "lasagna",
+          "cuisine": "european",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [
+            "marinara sauce"
+          ],
+          "missed_without_llm": [
+            "lasagna noodles",
+            "marinara sauce"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Pesto Pasta",
+          "dish_id": "pesto-pasta",
+          "cuisine": "european",
+          "required": 6,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 2,
+          "core_in_reference": 0,
+          "missed": [
+            "spaghetti"
+          ],
+          "missed_without_llm": [
+            "spaghetti"
+          ],
+          "core_not_in_reference": [
+            "basil pesto",
+            "pasta"
+          ]
+        },
+        {
+          "dish": "Beef Stew with Red Wine",
+          "dish_id": "beef-stew",
+          "cuisine": "american",
+          "required": 10,
+          "found": 10,
+          "found_without_llm": 10,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Shrimp Scampi",
+          "dish_id": "shrimp-scampi",
+          "cuisine": "european",
+          "required": 8,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 3,
+          "core_in_reference": 3,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Vegetable Fried Rice",
+          "dish_id": "fried-rice",
+          "cuisine": "east_se_asian",
+          "required": 8,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 3,
+          "core_in_reference": 2,
+          "missed": [
+            "jasmine rice",
+            "frozen peas and carrots",
+            "sesame oil"
+          ],
+          "missed_without_llm": [
+            "jasmine rice",
+            "frozen peas and carrots",
+            "sesame oil"
+          ],
+          "core_not_in_reference": [
+            "long-grain white rice"
+          ]
+        },
+        {
+          "dish": "Chocolate Chip Cookies",
+          "dish_id": "chocolate-chip-cookie",
+          "cuisine": "american",
+          "required": 8,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 8,
+          "core_in_reference": 8,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Caesar Salad",
+          "dish_id": "caesar-salad",
+          "cuisine": "latin_american",
+          "required": 10,
+          "found": 10,
+          "found_without_llm": 10,
+          "core": 7,
+          "core_in_reference": 7,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Chili con Carne",
+          "dish_id": "chili",
+          "cuisine": "american",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 3,
+          "core_in_reference": 3,
+          "missed": [
+            "beef broth"
+          ],
+          "missed_without_llm": [
+            "beef broth"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Salmon Avocado Sushi Rolls",
+          "dish_id": "california-roll",
+          "cuisine": "east_se_asian",
+          "required": 6,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 5,
+          "core_in_reference": 3,
+          "missed": [
+            "sushi-grade salmon"
+          ],
+          "missed_without_llm": [
+            "sushi-grade salmon"
+          ],
+          "core_not_in_reference": [
+            "cucumber",
+            "imitation crab"
+          ]
+        },
+        {
+          "dish": "Buttermilk Pancakes",
+          "dish_id": "pancake",
+          "cuisine": "american",
+          "required": 7,
+          "found": 6,
+          "found_without_llm": 6,
+          "core": 4,
+          "core_in_reference": 3,
+          "missed": [
+            "buttermilk"
+          ],
+          "missed_without_llm": [
+            "buttermilk"
+          ],
+          "core_not_in_reference": [
+            "milk"
+          ]
+        },
+        {
+          "dish": "Hummus",
+          "dish_id": "hummus",
+          "cuisine": "middle_eastern_african",
+          "required": 6,
+          "found": 6,
+          "found_without_llm": 6,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Spaghetti Carbonara",
+          "dish_id": "spaghetti-carbonara",
+          "cuisine": "european",
+          "required": 4,
+          "found": 3,
+          "found_without_llm": 3,
+          "core": 4,
+          "core_in_reference": 2,
+          "missed": [
+            "pecorino romano cheese"
+          ],
+          "missed_without_llm": [
+            "pecorino romano cheese"
+          ],
+          "core_not_in_reference": [
+            "parmesan cheese",
+            "bacon"
+          ]
+        },
+        {
+          "dish": "Tuna Salad Sandwich",
+          "dish_id": "tuna-salad-sandwich",
+          "cuisine": "american",
+          "required": 6,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 3,
+          "core_in_reference": 2,
+          "missed": [
+            "whole wheat bread"
+          ],
+          "missed_without_llm": [
+            "whole wheat bread"
+          ],
+          "core_not_in_reference": [
+            "sandwich bread"
+          ]
+        }
+      ]
+    },
+    "test": {
+      "recipes": 27,
+      "dishes_scored": 27,
+      "dishes_not_in_catalog": [],
+      "recall": 0.8981,
+      "recall_without_llm": 0.8641,
+      "core_precision": 0.8943,
+      "dishes_fully_covered": 13,
+      "totals": {
+        "required": 206,
+        "found": 185,
+        "found_without_llm": 178,
+        "core": 123,
+        "core_in_reference": 110
+      },
+      "dishes": [
+        {
+          "dish": "Macaroni and Cheese",
+          "dish_id": "macaroni-and-cheese",
+          "cuisine": "american",
+          "required": 5,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Banana Bread",
+          "dish_id": "banana-bread",
+          "cuisine": "american",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Meatloaf",
+          "dish_id": "meatloaf",
+          "cuisine": "american",
+          "required": 8,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 4,
+          "missed": [
+            "bread crumbs"
+          ],
+          "missed_without_llm": [
+            "bread crumbs"
+          ],
+          "core_not_in_reference": [
+            "breadcrumbs"
+          ]
+        },
+        {
+          "dish": "Pot Roast",
+          "dish_id": "pot-roast",
+          "cuisine": "american",
+          "required": 8,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 3,
+          "core_in_reference": 3,
+          "missed": [
+            "vegetable oil"
+          ],
+          "missed_without_llm": [
+            "vegetable oil"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Brownies",
+          "dish_id": "brownie",
+          "cuisine": "american",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 6,
+          "core_in_reference": 6,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Chicken Pot Pie",
+          "dish_id": "chicken-pot-pie",
+          "cuisine": "american",
+          "required": 8,
+          "found": 7,
+          "found_without_llm": 6,
+          "core": 6,
+          "core_in_reference": 5,
+          "missed": [
+            "frozen mixed vegetables"
+          ],
+          "missed_without_llm": [
+            "pie crust",
+            "frozen mixed vegetables"
+          ],
+          "core_not_in_reference": [
+            "carrots"
+          ]
+        },
+        {
+          "dish": "Potato Salad",
+          "dish_id": "potato-salad",
+          "cuisine": "american",
+          "required": 6,
+          "found": 4,
+          "found_without_llm": 4,
+          "core": 3,
+          "core_in_reference": 2,
+          "missed": [
+            "red potatoes",
+            "red onion"
+          ],
+          "missed_without_llm": [
+            "red potatoes",
+            "red onion"
+          ],
+          "core_not_in_reference": [
+            "potatoes"
+          ]
+        },
+        {
+          "dish": "Pumpkin Pie",
+          "dish_id": "pumpkin-pie",
+          "cuisine": "american",
+          "required": 8,
+          "found": 8,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [],
+          "missed_without_llm": [
+            "pie crust"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Cornbread",
+          "dish_id": "cornbread",
+          "cuisine": "american",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Coleslaw",
+          "dish_id": "coleslaw",
+          "cuisine": "american",
+          "required": 5,
+          "found": 5,
+          "found_without_llm": 5,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Chicken Noodle Soup",
+          "dish_id": "chicken-noodle-soup",
+          "cuisine": "american",
+          "required": 8,
+          "found": 8,
+          "found_without_llm": 7,
+          "core": 6,
+          "core_in_reference": 6,
+          "missed": [],
+          "missed_without_llm": [
+            "egg noodles"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Deviled Eggs",
+          "dish_id": "deviled-egg",
+          "cuisine": "american",
+          "required": 4,
+          "found": 4,
+          "found_without_llm": 4,
+          "core": 3,
+          "core_in_reference": 3,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Beef Stroganoff",
+          "dish_id": "beef-stroganoff",
+          "cuisine": "european",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 4,
+          "missed": [
+            "beef sirloin"
+          ],
+          "missed_without_llm": [
+            "beef sirloin",
+            "egg noodles"
+          ],
+          "core_not_in_reference": [
+            "beef stew meat"
+          ]
+        },
+        {
+          "dish": "Baked Ziti",
+          "dish_id": "baked-ziti",
+          "cuisine": "european",
+          "required": 7,
+          "found": 6,
+          "found_without_llm": 5,
+          "core": 4,
+          "core_in_reference": 3,
+          "missed": [
+            "ziti"
+          ],
+          "missed_without_llm": [
+            "ziti",
+            "marinara sauce"
+          ],
+          "core_not_in_reference": [
+            "ziti pasta"
+          ]
+        },
+        {
+          "dish": "Italian Meatballs",
+          "dish_id": "italian-meatball",
+          "cuisine": "european",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 5,
+          "core_in_reference": 4,
+          "missed": [
+            "bread crumbs"
+          ],
+          "missed_without_llm": [
+            "bread crumbs"
+          ],
+          "core_not_in_reference": [
+            "italian breadcrumbs"
+          ]
+        },
+        {
+          "dish": "Zuppa Toscana",
+          "dish_id": "zuppa-toscana",
+          "cuisine": "european",
+          "required": 8,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 7,
+          "core_in_reference": 7,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Mexican Rice",
+          "dish_id": "mexican-rice",
+          "cuisine": "latin_american",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Chicken Enchiladas",
+          "dish_id": "chicken-enchilada",
+          "cuisine": "latin_american",
+          "required": 7,
+          "found": 7,
+          "found_without_llm": 6,
+          "core": 2,
+          "core_in_reference": 2,
+          "missed": [],
+          "missed_without_llm": [
+            "enchilada sauce"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Steak Fajitas",
+          "dish_id": "steak-fajita",
+          "cuisine": "latin_american",
+          "required": 9,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 4,
+          "core_in_reference": 3,
+          "missed": [
+            "bell peppers",
+            "vegetable oil"
+          ],
+          "missed_without_llm": [
+            "bell peppers",
+            "vegetable oil"
+          ],
+          "core_not_in_reference": [
+            "green bell pepper"
+          ]
+        },
+        {
+          "dish": "Black Bean Soup",
+          "dish_id": "black-bean-soup",
+          "cuisine": "latin_american",
+          "required": 9,
+          "found": 9,
+          "found_without_llm": 9,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Kung Pao Chicken",
+          "dish_id": "kung-pao-chicken",
+          "cuisine": "east_se_asian",
+          "required": 11,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 6,
+          "core_in_reference": 4,
+          "missed": [
+            "chicken thighs",
+            "dried red chiles",
+            "vegetable oil"
+          ],
+          "missed_without_llm": [
+            "chicken thighs",
+            "dried red chiles",
+            "vegetable oil"
+          ],
+          "core_not_in_reference": [
+            "boneless skinless chicken breast",
+            "red pepper flakes"
+          ]
+        },
+        {
+          "dish": "Egg Drop Soup",
+          "dish_id": "egg-drop-soup",
+          "cuisine": "east_se_asian",
+          "required": 7,
+          "found": 6,
+          "found_without_llm": 6,
+          "core": 4,
+          "core_in_reference": 4,
+          "missed": [
+            "sesame oil"
+          ],
+          "missed_without_llm": [
+            "sesame oil"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Beef and Broccoli Stir-Fry",
+          "dish_id": "beef-and-broccoli-stir-fry",
+          "cuisine": "east_se_asian",
+          "required": 9,
+          "found": 8,
+          "found_without_llm": 7,
+          "core": 6,
+          "core_in_reference": 5,
+          "missed": [
+            "flank steak"
+          ],
+          "missed_without_llm": [
+            "flank steak",
+            "vegetable oil"
+          ],
+          "core_not_in_reference": [
+            "beef sirloin steak"
+          ]
+        },
+        {
+          "dish": "Butter Chicken",
+          "dish_id": "butter-chicken",
+          "cuisine": "south_asian",
+          "required": 11,
+          "found": 8,
+          "found_without_llm": 8,
+          "core": 5,
+          "core_in_reference": 3,
+          "missed": [
+            "chicken thighs",
+            "tomato sauce",
+            "turmeric"
+          ],
+          "missed_without_llm": [
+            "chicken thighs",
+            "tomato sauce",
+            "turmeric"
+          ],
+          "core_not_in_reference": [
+            "tomato puree",
+            "chicken breast"
+          ]
+        },
+        {
+          "dish": "Naan",
+          "dish_id": "naan",
+          "cuisine": "south_asian",
+          "required": 6,
+          "found": 6,
+          "found_without_llm": 6,
+          "core": 2,
+          "core_in_reference": 2,
+          "missed": [],
+          "missed_without_llm": [],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Falafel",
+          "dish_id": "falafel",
+          "cuisine": "middle_eastern_african",
+          "required": 9,
+          "found": 7,
+          "found_without_llm": 7,
+          "core": 5,
+          "core_in_reference": 5,
+          "missed": [
+            "baking soda",
+            "vegetable oil"
+          ],
+          "missed_without_llm": [
+            "baking soda",
+            "vegetable oil"
+          ],
+          "core_not_in_reference": []
+        },
+        {
+          "dish": "Tabbouleh",
+          "dish_id": "tabbouleh",
+          "cuisine": "middle_eastern_african",
+          "required": 7,
+          "found": 6,
+          "found_without_llm": 6,
+          "core": 6,
+          "core_in_reference": 5,
+          "missed": [
+            "parsley"
+          ],
+          "missed_without_llm": [
+            "parsley"
+          ],
+          "core_not_in_reference": [
+            "flat-leaf parsley"
+          ]
+        }
+      ]
+    }
+  }
+}

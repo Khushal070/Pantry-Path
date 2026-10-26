@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-10-25T01:50:18.402765+00:00",
+  "generated_at": "2026-10-26T19:29:44.557261+00:00",
   "inputs": {
     "off_products.parquet": [
-      31883358,
-      1792892582281536650
+      31572054,
+      1793042979148059744
     ],
     "dish_profiles.json": [
       242346,
-      1792893010712399329
+      1792893110987631184
     ]
   },
-  "off": "/opt/pantrypath/data-pipeline/data/processed/off_products.parquet",
-  "catalog": "/opt/pantrypath/data-pipeline/data/processed/dish_profiles.json"
+  "off": "/Users/anshkanungo/Code/Pantry-Path/data-pipeline/data/processed/off_products.parquet",
+  "catalog": "/Users/anshkanungo/Code/Pantry-Path/data-pipeline/data/processed/dish_profiles.json"
 }

@@ -1,44 +1,44 @@
 {
   "off": {
-    "rows": 411910,
-    "file_mb": 31.88,
+    "rows": 410009,
+    "file_mb": 31.57,
     "null_rate": {
       "barcode": 0.0,
       "code": 0.0,
-      "product_name": 0.009653,
-      "brands": 0.312753,
-      "categories_tags": 0.15768,
-      "allergens_tags": 0.387602,
-      "traces_tags": 0.977245,
-      "ingredients_text": 0.000272,
-      "ingredients_lang": 0.000272,
-      "labels_tags": 0.814219,
-      "ingredients_analysis_tags": 0.000595,
+      "product_name": 0.009556,
+      "brands": 0.313866,
+      "categories_tags": 0.157731,
+      "allergens_tags": 0.387343,
+      "traces_tags": 0.978418,
+      "ingredients_text": 0.000273,
+      "ingredients_lang": 0.000273,
+      "labels_tags": 0.815833,
+      "ingredients_analysis_tags": 0.000585,
       "unique_scans_n": 0.0,
       "completeness": 0.0,
       "last_modified_t": 0.0
     },
     "evidence_rate": {
-      "ingredients": 0.999728,
-      "allergens": 0.612398,
-      "both": 0.612126,
+      "ingredients": 0.999727,
+      "allergens": 0.612657,
+      "both": 0.612384,
       "either": 1.0
     },
     "allergen_coverage": {
-      "milk": 0.302675,
-      "egg": 0.091855,
-      "fish": 0.015533,
-      "shellfish": 0.009548,
-      "tree_nuts": 0.070345,
-      "peanuts": 0.044311,
-      "soy": 0.270117,
-      "sesame": 0.02652,
-      "gluten": 0.236066
+      "milk": 0.302847,
+      "egg": 0.091905,
+      "fish": 0.015505,
+      "shellfish": 0.009571,
+      "tree_nuts": 0.070303,
+      "peanuts": 0.044326,
+      "soy": 0.270611,
+      "sesame": 0.02649,
+      "gluten": 0.23607
     },
     "scans_tier": {
-      "0": 0.786094,
-      "1_9": 0.206234,
-      "10_plus": 0.007672
+      "0": 0.788307,
+      "1_9": 0.204391,
+      "10_plus": 0.007302
     },
     "ingredients_text_length": {
       "min": 1,
@@ -127,7 +127,7 @@
     }
   },
   "outliers": {
-    "off_ingredients_text_length": 88,
+    "off_ingredients_text_length": 87,
     "catalog_ingredients_per_dish": 7,
     "catalog_recipe_count": 0
   }

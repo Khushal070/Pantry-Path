@@ -15,7 +15,7 @@
 - **Output:** `result.json`, which lists the dish's ingredients, the nearest grocery stores, and for every ingredient up to 5 products per store, each with a verdict: **safe**, **unsafe** or **unknown**, plus a reason.
 - **Where the output goes:** your part takes `result.json` and turns it into the final answer, UI or route. The pipeline never writes the final answer, never substitutes ingredients and never shows prices.
 - **How you call it:** one Python function (`build_result`), a terminal command, or an Airflow DAG for demos.
-- **What runs in the background:** a weekly Airflow pipeline refreshes two data files the request flow reads: a **dish catalog** (100 dishes) and an **allergen snapshot** (~412k US products from Open Food Facts). Both are versioned with DVC.
+- **What runs in the background:** a weekly Airflow pipeline refreshes two data files the request flow reads: a **dish catalog** (100 dishes) and an **allergen snapshot** (~410k US products from Open Food Facts). Both are versioned with DVC.
 - **The one rule that matters most:** *unknown is never safe.* If we can't see a product's ingredient list, it is not shown as safe.
 
 ## 2. The big picture
@@ -45,16 +45,18 @@ The top two rows run **weekly** (Airflow DAG `build_reference_data`). The bottom
 |---|---|---|---|---|
 | `pantrypath.sqlite` | Dish catalog for fast lookup (dishes, aliases, ingredients) | < 1 MB | Weekly | `dvc pull` |
 | `dish_profiles.json` | The same catalog as JSON (`pantrypath_core.catalog.Catalog`) | < 1 MB | Weekly | `dvc pull` |
-| `off_products.parquet` | US products with ingredients or allergen data, keyed by GTIN-13 barcode; English ingredient text cleaned of HTML | ~32 MB, ~412k rows | Weekly | `dvc pull` |
+| `off_products.parquet` | US products with ingredients or allergen data, keyed by GTIN-13 barcode; English ingredient text only, cleaned of HTML | ~32 MB, ~410k rows | Weekly | `dvc pull` |
 | `llm_cache/` | Every LLM reply used to build the catalog (one file per prompt) | A few MB | Weekly | `dvc pull` |
 
 Not data products, but useful:
 
 | Where | What |
 |---|---|
-| `data-pipeline/reports/` | `stats.json` (data statistics), `drift.json`, `outliers.json`, `ge/` (Great Expectations results), `bias_report.md`, `catalog_summary.json`, `llm_usage.json`, Gantt screenshots. All in Git. |
+| `data-pipeline/reports/` | `stats.json` (data statistics), `drift.json`, `outliers.json`, `ge/` (Great Expectations results), `bias_report.md`, `catalog_eval.md`, `catalog_summary.json`, `llm_usage.json`, Gantt screenshots. All in Git. |
 | `data-pipeline/results/` | Request outputs from the terminal command. Temporary by design, gitignored. |
-| `data/golden/recipes.json` | 16 hand-written recipes (with quantities) for evals. |
+| `data/golden/recipes.json` | 16 hand-written recipes (with quantities) for evals: the dev split, used while building the pipeline. |
+| `data/golden/recipes_heldout.json` | 27 more recipes for other catalog dishes: the held-out test split, written after the catalog was frozen. Use it to evaluate, never to tune prompts or rules. Scores: `data-pipeline/reports/catalog_eval.md`. |
+| `data-pipeline/data/eval/diet_rules_seen_barcodes.parquet` | Barcodes diet_rules was tuned on. Products outside it are the diet-rules held-out set (`bias_report.md`). |
 
 **Never stored anywhere:** Kroger data. Kroger's API terms forbid keeping copies, so it lives in memory during a request only (15-minute cache).
 
@@ -233,7 +235,7 @@ Order of precedence: **unsafe beats unknown beats safe.** Evidence comes from Kr
 
 - **Weekly DAG `build_reference_data`** (Airflow 3.3 in Docker; UI at http://localhost:8080). Two branches run in parallel (Open Food Facts; Food.com → LLM → catalog), then load, stats, drift check, bias report, DVC versioning and a success notification.
 - **Quality checks:** Great Expectations suites on both outputs, outlier checks, drift against the previous run. Blocking problems fail the run; warnings send an alert.
-- **Alerts:** always logged and emailed to the address in `config/pipeline.yaml` (`alerts.email_to`). Sending needs the Gmail app password in `.env` (`ALERT_SMTP_PASSWORD`).
+- **Alerts:** always logged and emailed to the project address in `config/pipeline.yaml` (`alerts.email_to`); tested on 2026-10-26. To get them yourself, set `ALERT_SMTP_USER` (your Gmail), `ALERT_SMTP_PASSWORD` (its app password) and `ALERT_EMAIL_TO` in `.env`.
 - **Reruns are reproducible and free:**
   - The catalog's LLM step ran once (Claude Opus 5.5, $6.08).
   - The DAG pulls those saved replies (`pull_llm_cache`) and replays them, so nobody needs an LLM key or pays again. Weekly runs only refresh the Open Food Facts snapshot.
@@ -245,14 +247,14 @@ Order of precedence: **unsafe beats unknown beats safe.** Evidence comes from Kr
 
 | Check | Value |
 |---|---|
-| Allergen snapshot | 411,910 US products, 30 MB (from the 8 GB dump in ~11 s); ingredient text on 99.97%, allergen tags on 61% |
+| Allergen snapshot | 410,009 US products (English ingredient lists only), 30 MB (from the 8 GB dump in ~11 s); ingredient text on 99.97%, allergen tags on 61% |
 | Dish catalog | 100 dishes: 60 American, 10 European, 10 Latin American, 10 East/SE Asian, 5 South Asian, 5 Middle Eastern/African (quotas met); 508 aliases; 1,171 ingredient rows; all 16 golden-set dishes included |
 | Catalog build | 254 candidate dishes → 215 kept, 31 merged, 8 dropped as non-dishes, 0 failures; quality suites: 20 checks, 0 failures |
 | Example request | "quiche", 45202, avoid milk + gluten, vegetarian → quiche lorraine, 3 Kroger stores (0.6–1.3 mi), 12 ingredients, 180 products (39 safe, 114 unsafe, 27 unknown), 4 of 12 ingredients with a safe product; **5.3 s, 38 Kroger calls** |
 | Example via Airflow (`serve_request`) | "pad thai", 45202, avoid peanuts + shellfish → 3 Kroger stores + 1 Target (fallback), 18 ingredients, 16 with a safe product (none for peanuts and shrimp, as expected); 20.2 s |
 | Evidence coverage (smoke run, 120 products) | Kroger's own data 99, Open Food Facts by barcode 9, none 12 |
 | Batch DAG time: serial vs parallel (Gantt) | 11.2 min → **4.6 min** (−59%) for the whole weekly pipeline, LLM replies from cache; charts in `data-pipeline/reports/gantt_*.svg` |
-| Bias report headline | Reading ingredient text cut diet_rules' unknown rate from 77% to 1.0% (false-safe 0.0% → 0.4%); widest gap left: plant-based substitutes 3.7% vs meals 0.3% unknown. Full report: `data-pipeline/reports/bias_report.md` |
+| Bias report headline | Reading ingredient text cut diet_rules' unknown rate from 77% to 0.6% (false-safe 0.0% → 0.4%); widest gap left: bakery and cereals 2.9% vs pantry condiments 0.1% unknown. Full report: `data-pipeline/reports/bias_report.md` |
 | LLM cost of the catalog build | $6.08 (Claude Opus 5.5, 254 calls); reruns replay the cache for $0 |
 
 ## 13. Known limits and open items

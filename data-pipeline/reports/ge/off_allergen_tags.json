@@ -1,7 +1,7 @@
 {
   "suite": "off_allergen_tags",
-  "validated_at": "2026-10-25T01:43:07.124430+00:00",
-  "rows": 506828,
+  "validated_at": "2026-10-26T19:29:42.758536+00:00",
+  "rows": 504762,
   "success": true,
   "critical_failures": 0,
   "warnings": 0,
@@ -22,7 +22,7 @@
       "column": null,
       "severity": "warning",
       "success": true,
-      "observed_value": 506828,
+      "observed_value": 504762,
       "unexpected_count": null,
       "unexpected_percent": null,
       "examples": [],
@@ -46,7 +46,7 @@
           "severity": "critical"
         },
         "result": {
-          "element_count": 506828,
+          "element_count": 504762,
           "unexpected_count": 0,
           "unexpected_percent": 0.0,
           "partial_unexpected_list": [],
@@ -76,7 +76,7 @@
           "severity": "warning"
         },
         "result": {
-          "observed_value": 506828
+          "observed_value": 504762
         },
         "meta": {},
         "exception_info": {
@@ -100,8 +100,8 @@
         "batch_data": "PandasDataFrame"
       },
       "batch_markers": {
-        "ge_load_time": "20261025T014306.948791Z",
-        "pandas_data_fingerprint": "6b791e99a5f70e936ba76da1726888f6"
+        "ge_load_time": "20261026T192942.642855Z",
+        "pandas_data_fingerprint": "f3765855895508162c9deb9aa70f64f3"
       },
       "active_batch_definition": {
         "datasource_name": "off_allergen_tags_source",

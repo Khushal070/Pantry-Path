@@ -1,8 +1,8 @@
 """Run summary: one message at the end of a successful batch run.
 
 Collects the headline numbers that the other steps saved in reports/ (rows, dishes,
-data-quality warnings, drift, bias, LLM usage) and sends them as an info alert:
-always logged, and emailed when email alerts are configured.
+data-quality warnings, drift, bias, catalog evaluation, LLM usage) and sends them as an
+info alert: always logged, and emailed when email alerts are configured.
 """
 
 import json
@@ -45,6 +45,15 @@ def bias_headline(report: Any) -> str | None:
     return None
 
 
+def catalog_eval_line(report: Any) -> str | None:
+    """Ingredient recall per split, e.g. 'dev 91.1%, test 89.8% recall (ok)'."""
+    if not isinstance(report, dict) or not isinstance(report.get("splits"), dict):
+        return None
+    parts = [f"{name} {s['recall']:.1%}" for name, s in report["splits"].items()
+             if isinstance(s, dict) and isinstance(s.get("recall"), int | float)]
+    return f"{', '.join(parts)} recall ({report.get('status')})" if parts else None
+
+
 def llm_totals(usage: Any) -> dict[str, float]:
     """Numeric totals from the LLM usage report (calls, tokens, cost)."""
     if not isinstance(usage, dict):
@@ -70,6 +79,8 @@ def run(cfg: Config, **_: Any) -> dict[str, Any]:
         "drift": drift.get("status", "not run"),
         "drift_warnings": sum(c.get("status") == "warning" for c in drift.get("checks", [])),
         "bias": bias_headline(read_json(cfg.path(cfg["bias"]["output_json"]))),
+        "catalog_eval": catalog_eval_line(
+            read_json(cfg.path(cfg["catalog_eval"]["output_json"]))),
         "llm_usage": llm_totals(read_json(cfg.path(cfg["llm"]["usage_report"]))),
     }
 
@@ -82,6 +93,8 @@ def run(cfg: Config, **_: Any) -> dict[str, Any]:
     ]
     if summary["bias"]:
         lines.append(f"Bias: {summary['bias']}")
+    if summary["catalog_eval"]:
+        lines.append(f"Catalog evaluation: {summary['catalog_eval']}")
     if summary["llm_usage"]:
         lines.append("LLM usage: " + ", ".join(f"{k}={v}" for k, v in
                                                 summary["llm_usage"].items()))

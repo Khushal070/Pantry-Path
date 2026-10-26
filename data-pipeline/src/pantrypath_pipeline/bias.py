@@ -379,6 +379,65 @@ def _row_count(path: Path) -> int:
         return con.execute("SELECT count(*) FROM read_parquet(?)", [str(path)]).fetchone()[0]
 
 
+# ---------------------------------------------------------------- held-out products
+# diet_rules was tuned by looking at every labelled product in the 2026-10-24 snapshot,
+# so no product in it is held out. Its barcodes are frozen in bias.seen_products; a
+# product a later snapshot adds was never seen, so the labelled ones among them form a
+# held-out set that grows with every weekly run.
+
+
+def _quoted(path: Path) -> str:
+    return "'" + str(path).replace("'", "''") + "'"
+
+
+def seen_info(path: Path) -> dict[str, Any] | None:
+    """How many barcodes are frozen as seen, and when the last freeze was."""
+    if not path.is_file():
+        return None
+    with duckdb.connect() as con:
+        n, last = con.execute(
+            "SELECT count(*), max(frozen_on) FROM read_parquet(?)", [str(path)]).fetchone()
+    return {"seen_products": int(n), "frozen_on": str(last) if last else None}
+
+
+def held_out_filter(seen: Path) -> str:
+    """Labelled products whose barcode diet_rules has never been tuned on."""
+    return (f"({LABELLED_FILTER}) AND barcode NOT IN "
+            f"(SELECT barcode FROM read_parquet({_quoted(seen)}))")
+
+
+def run_freeze_seen(cfg: Config, **_: Any) -> dict[str, Any]:
+    """Step freeze-seen-products: mark every barcode in the current snapshot as seen.
+
+    Run it by hand after changing diet_rules while looking at products from the current
+    snapshot. Barcodes frozen earlier keep their date; only new ones are added.
+    """
+    snapshot = cfg.path(cfg["off"]["output"])
+    if not snapshot.is_file():
+        raise DataUnavailableError(f"{snapshot} not found: run filter-off or `dvc pull` it")
+    seen = cfg.path(cfg["bias"]["seen_products"])
+    seen.parent.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(UTC).date().isoformat()
+    new_file = seen.with_name(seen.name + ".tmp")
+    with duckdb.connect() as con:
+        old = (f"SELECT barcode, frozen_on FROM read_parquet({_quoted(seen)})"
+               if seen.is_file() else "SELECT NULL::VARCHAR AS barcode, NULL::DATE AS frozen_on "
+                                      "WHERE FALSE")
+        con.execute(f"""
+            COPY (
+                WITH old AS ({old})
+                SELECT * FROM old
+                UNION ALL
+                SELECT DISTINCT barcode, DATE '{today}' FROM read_parquet({_quoted(snapshot)})
+                WHERE barcode IS NOT NULL AND barcode NOT IN (SELECT barcode FROM old)
+                ORDER BY barcode
+            ) TO {_quoted(new_file)} (FORMAT parquet, COMPRESSION zstd)""")
+    new_file.replace(seen)
+    info = seen_info(seen)
+    log.info("bias: %d barcodes frozen as seen in %s", info["seen_products"], seen)
+    return {**info, "file": str(seen)}
+
+
 # ---------------------------------------------------------------- evaluation
 
 
@@ -513,8 +572,13 @@ def products_section(cfg: Config, evidence_fn: EvidenceFn, assess_fn: AssessFn) 
                               seed=seed)
     labelled_rows = load_rows(path, where=LABELLED_FILTER,
                               limit=int(settings.get("labelled_sample_size", 40000)), seed=seed)
-    log.info("bias: read %d coverage and %d labelled products in %.1fs",
-             len(coverage_rows), len(labelled_rows), time.monotonic() - started)
+    seen_path = cfg.path(settings["seen_products"]) if settings.get("seen_products") else None
+    seen = seen_info(seen_path) if seen_path else None
+    held_out_rows = (load_rows(path, where=held_out_filter(seen_path), seed=seed)
+                     if seen else [])
+    log.info("bias: read %d coverage, %d labelled and %d held-out products in %.1fs",
+             len(coverage_rows), len(labelled_rows), len(held_out_rows),
+             time.monotonic() - started)
 
     evaluator = _Evaluator(
         evidence_fn, assess_fn,
@@ -522,8 +586,9 @@ def products_section(cfg: Config, evidence_fn: EvidenceFn, assess_fn: AssessFn) 
     )
     started = time.monotonic()
     records = (evaluator.records(coverage_rows, "coverage", with_truth=False)
-               + evaluator.records(labelled_rows, "labelled", with_truth=True))
-    total = len(coverage_rows) + len(labelled_rows)
+               + evaluator.records(labelled_rows, "labelled", with_truth=True)
+               + evaluator.records(held_out_rows, "held_out", with_truth=True))
+    total = len(coverage_rows) + len(labelled_rows) + len(held_out_rows)
     if total and evaluator.skipped > 0.01 * total:
         raise PipelineError(
             f"{evaluator.skipped} of {total} products could not be evaluated; see the log"
@@ -534,6 +599,19 @@ def products_section(cfg: Config, evidence_fn: EvidenceFn, assess_fn: AssessFn) 
         "sample", "barcode", "profile", "mode", "truth", "verdict", *SLICINGS])
     coverage = frame[frame["sample"] == "coverage"]
     labelled = frame[frame["sample"] == "labelled"]
+    held = frame[frame["sample"] == "held_out"]
+    held_out: dict[str, Any] = {
+        "status": "ok" if seen else "no_seen_list",
+        **(seen or {}),
+        "products": len(held_out_rows),
+        "truth_counts": _truth_counts(held_out_rows),
+        "correctness": {
+            mode: {"pooled": _rates(held[held["mode"] == mode], CORRECTNESS_RATES),
+                   **{p: _rates(held[(held["mode"] == mode) & (held["profile"] == p)],
+                                CORRECTNESS_RATES) for p in PROFILES}}
+            for mode in (BEFORE, AFTER)
+        },
+    }
 
     overall: dict[str, Any] = {"coverage": {}, "correctness": {}}
     for mode in MODES:
@@ -600,6 +678,7 @@ def products_section(cfg: Config, evidence_fn: EvidenceFn, assess_fn: AssessFn) 
         "skipped_products": evaluator.skipped,
         "truth_counts": _truth_counts(labelled_rows),
         "overall": overall,
+        "held_out": held_out,
         "slices": slices,
         "false_safe_examples": examples("unsafe", "safe"),
         "false_unsafe_examples": examples("safe", "unsafe"),
@@ -833,6 +912,20 @@ def product_findings(p: dict[str, Any], min_size: int) -> list[str]:
             f"({worst['slicing']}), {_pct(worst['value'], 1)} of {worst['n']:,} "
             f"unsafe verdicts."
         )
+    h = p.get("held_out") or {}
+    if h.get("status") == "ok":
+        if h["products"] >= min_size:
+            pooled = h["correctness"][AFTER]["pooled"]
+            out.append(
+                f"Held out: on {h['products']:,} products added after the rules were frozen, "
+                f"false safe is {_pct(pooled['false_safe_rate'], 1)} and accuracy when decided "
+                f"{_pct(pooled['accuracy_decided'])}, against "
+                f"{_pct(a['false_safe_rate'], 1)} and {_pct(a['accuracy_decided'])} on the "
+                f"fixed sample.")
+        else:
+            out.append(
+                f"Held out: {h['products']:,} labelled products added since the seen list was "
+                f"frozen on {h['frozen_on']}; too few to score yet (the set grows weekly).")
     return out
 
 
@@ -923,8 +1016,11 @@ LIMITATIONS = [
     "adjusted after looking at mismatches with these same Open Food Facts vegan, vegetarian "
     "and gluten-free labels on a ~47k-product sample of this snapshot (for example, recall "
     "on vegan-labelled products rose from 91.3% to 92.7%). The fixed sample used here "
-    "overlaps that data, so accuracy and safe-found numbers are likely optimistic. A fair "
-    "estimate needs a held-out set of products nobody looked at while writing the rules.",
+    "overlaps that data, so accuracy and safe-found numbers are likely optimistic. The fair "
+    "estimate is the held-out check: products added to Open Food Facts after the snapshot "
+    "the rules were tuned on (its barcodes are frozen in `bias.seen_products`). It starts "
+    "empty and grows with each weekly snapshot; rerun `freeze-seen-products` whenever the "
+    "rules are changed after looking at newer products, or the check stops being held out.",
     "**Label noise.** Open Food Facts claims are not always right: some products labelled "
     "vegan or gluten-free list eggs, chicken stock or wheat (see the disagreement tables). "
     "Such products count against the rules when the rules are actually right, and a "
@@ -1004,6 +1100,38 @@ def _catalog_md(c: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _held_out_md(h: dict[str, Any], min_size: int) -> list[str]:
+    lines = ["### Held-out check: products added after the rules were frozen", ""]
+    if h.get("status") != "ok":
+        return lines + ["No list of seen products (`bias.seen_products`), so there is no "
+                        "held-out check in this run. Create it with "
+                        "`python -m pantrypath_pipeline freeze-seen-products`.", ""]
+    lines += [
+        f"diet_rules was tuned on the products whose {h['seen_products']:,} barcodes were "
+        f"frozen as seen (last freeze {h['frozen_on']}). Products a later snapshot adds were never "
+        "looked at, so the labelled ones among them are a true held-out test. The set "
+        "starts empty and grows with every weekly snapshot.", "",
+    ]
+    if not h["products"]:
+        return lines + ["**0 held-out products in this snapshot** (it is the frozen one).", ""]
+    small = h["products"] < min_size
+    lines.append(f"**{h['products']:,} held-out products** with a ground truth"
+                 + (f" (fewer than {min_size}: too few to compare with the numbers above yet)"
+                    if small else "") + ". Each cell: tags only → full rules.")
+    lines.append("")
+    cor = h["correctness"]
+    rows = []
+    for prof in [*PROFILES, "pooled"]:
+        b, a = cor[BEFORE][prof], cor[AFTER][prof]
+        rows.append(["all users" if prof == "pooled" else _label(prof), f"{int(a['n']):,}",
+                     f"{_pct(b['unknown_rate'])} → {_pct(a['unknown_rate'])}",
+                     f"{_pct(b['accuracy_decided'])} → {_pct(a['accuracy_decided'])}",
+                     f"{_pct(b['false_safe_rate'], 1)} → {_pct(a['false_safe_rate'], 1)}",
+                     f"{_pct(b['safe_found_rate'])} → {_pct(a['safe_found_rate'])}"])
+    return lines + _table(["User", "Verdicts", "Unknown", "Accuracy when decided",
+                           "False safe", "Safe found"], rows)
+
+
 def _products_md(p: dict[str, Any], settings: dict[str, Any]) -> list[str]:
     min_size, bins = settings["min_slice_size"], settings["popularity_bins"]
     lines = [
@@ -1013,7 +1141,8 @@ def _products_md(p: dict[str, Any], settings: dict[str, Any]) -> list[str]:
         f"ingredient or allergen data). Coverage uses a fixed sample of "
         f"{p['coverage_products']:,} products; correctness uses {p['labelled_products']:,} "
         f"products that may have a ground truth (seed {settings['seed']}: the same products "
-        f"every run). This is a fixed sample, not a held-out test set (see Limitations).",
+        f"every run). This is a fixed sample, not a held-out test set (see Limitations); "
+        f"the held-out check below scores only products the rules were never tuned on.",
         "- **Users:** vegan, vegetarian, and avoiding gluten.",
         "- **Ground truth (evaluation only, never read by the rules):** safe = the product "
         "carries the claim (`en:vegan`; `en:vegetarian` or `en:vegan`; `en:no-gluten`). "
@@ -1051,6 +1180,7 @@ def _products_md(p: dict[str, Any], settings: dict[str, Any]) -> list[str]:
         ])
     lines += _table(["User", "Unknown (all products)", "Accuracy when decided",
                      "False safe", "Safe found"], rows)
+    lines += _held_out_md(p.get("held_out") or {}, min_size)
 
     lines += ["### Coverage by slice (unknown rate, all users)", ""]
     for slicing, label in SLICINGS.items():
@@ -1219,6 +1349,7 @@ def run(cfg: Config, evidence_fn: EvidenceFn | None = None,
     return {
         "coverage_products": report["products"]["coverage_products"],
         "labelled_products": report["products"]["labelled_products"],
+        "held_out_products": report["products"]["held_out"]["products"],
         "catalog": report["catalog"]["status"],
         "headline": report["headline"],
         "unknown_rate": {"before": cov[BEFORE]["pooled"], "after": cov[AFTER]["pooled"]},

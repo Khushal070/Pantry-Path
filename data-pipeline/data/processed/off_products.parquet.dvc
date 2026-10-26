@@ -1,5 +1,5 @@
 outs:
-- md5: a4e98c329b546093282b442da33591b0
-  size: 31883358
+- md5: b80c6224ba53b6ed3af1e6050a124551
+  size: 31572054
   hash: md5
   path: off_products.parquet

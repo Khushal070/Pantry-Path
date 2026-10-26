@@ -1,0 +1,445 @@
+[
+  {
+    "dish": "Macaroni and Cheese",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb elbow macaroni", "name": "elbow macaroni", "quantity": 1, "unit": "lb", "category": "grain"},
+      {"raw": "4 cups shredded sharp cheddar cheese", "name": "cheddar cheese", "quantity": 4, "unit": "cup", "form": "shredded", "category": "dairy"},
+      {"raw": "3 cups milk", "name": "milk", "quantity": 3, "unit": "cup", "category": "dairy"},
+      {"raw": "4 tbsp butter", "name": "butter", "quantity": 4, "unit": "tbsp", "category": "dairy"},
+      {"raw": "1/4 cup all-purpose flour", "name": "all-purpose flour", "quantity": 0.25, "unit": "cup", "category": "baking"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/2 tsp dry mustard", "name": "dry mustard", "quantity": 0.5, "unit": "tsp", "category": "spice_herb", "optional": true},
+      {"raw": "1/2 cup bread crumbs", "name": "bread crumbs", "quantity": 0.5, "unit": "cup", "category": "bakery", "optional": true}
+    ]
+  },
+  {
+    "dish": "Banana Bread",
+    "servings": 10,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "3 ripe bananas, mashed", "name": "bananas", "quantity": 3, "unit": "piece", "form": "mashed", "category": "produce"},
+      {"raw": "1 3/4 cups all-purpose flour", "name": "all-purpose flour", "quantity": 1.75, "unit": "cup", "category": "baking"},
+      {"raw": "3/4 cup granulated sugar", "name": "granulated sugar", "quantity": 0.75, "unit": "cup", "category": "sweetener"},
+      {"raw": "1/3 cup melted butter", "name": "butter", "quantity": 0.33, "unit": "cup", "form": "melted", "category": "dairy"},
+      {"raw": "1 large egg", "name": "eggs", "quantity": 1, "unit": "piece", "category": "egg"},
+      {"raw": "1 tsp baking soda", "name": "baking soda", "quantity": 1, "unit": "tsp", "category": "baking"},
+      {"raw": "1 tsp vanilla extract", "name": "vanilla extract", "quantity": 1, "unit": "tsp", "category": "baking"},
+      {"raw": "1/4 tsp salt", "name": "salt", "quantity": 0.25, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/2 cup chopped walnuts", "name": "walnuts", "quantity": 0.5, "unit": "cup", "form": "chopped", "category": "nut_seed", "optional": true}
+    ]
+  },
+  {
+    "dish": "Meatloaf",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "2 lb ground beef", "name": "ground beef", "quantity": 2, "unit": "lb", "category": "meat"},
+      {"raw": "1 cup bread crumbs", "name": "bread crumbs", "quantity": 1, "unit": "cup", "category": "bakery"},
+      {"raw": "2 large eggs", "name": "eggs", "quantity": 2, "unit": "piece", "category": "egg"},
+      {"raw": "1/2 cup milk", "name": "milk", "quantity": 0.5, "unit": "cup", "category": "dairy"},
+      {"raw": "1 onion, finely chopped", "name": "onion", "quantity": 1, "unit": "piece", "form": "chopped", "category": "produce"},
+      {"raw": "3/4 cup ketchup", "name": "ketchup", "quantity": 0.75, "unit": "cup", "category": "condiment"},
+      {"raw": "2 tbsp brown sugar", "name": "brown sugar", "quantity": 2, "unit": "tbsp", "category": "sweetener"},
+      {"raw": "1 tbsp worcestershire sauce", "name": "worcestershire sauce", "quantity": 1, "unit": "tbsp", "category": "condiment"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/2 tsp black pepper", "name": "black pepper", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Pot Roast",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "3 lb beef chuck roast", "name": "beef chuck roast", "quantity": 3, "unit": "lb", "category": "meat"},
+      {"raw": "1 lb potatoes, quartered", "name": "potatoes", "quantity": 1, "unit": "lb", "form": "quartered", "category": "produce"},
+      {"raw": "4 carrots, cut in chunks", "name": "carrots", "quantity": 4, "unit": "piece", "form": "chopped", "category": "produce"},
+      {"raw": "1 onion, quartered", "name": "onion", "quantity": 1, "unit": "piece", "form": "quartered", "category": "produce"},
+      {"raw": "2 cups beef broth", "name": "beef broth", "quantity": 2, "unit": "cup", "category": "other"},
+      {"raw": "3 cloves garlic", "name": "garlic", "quantity": 3, "unit": "clove", "category": "produce"},
+      {"raw": "2 tbsp vegetable oil", "name": "vegetable oil", "quantity": 2, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "2 sprigs fresh thyme", "name": "thyme", "quantity": 2, "unit": "piece", "category": "spice_herb"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/2 tsp black pepper", "name": "black pepper", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Brownies",
+    "servings": 16,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1/2 cup butter", "name": "butter", "quantity": 0.5, "unit": "cup", "category": "dairy"},
+      {"raw": "1 cup granulated sugar", "name": "granulated sugar", "quantity": 1, "unit": "cup", "category": "sweetener"},
+      {"raw": "2 large eggs", "name": "eggs", "quantity": 2, "unit": "piece", "category": "egg"},
+      {"raw": "1/3 cup unsweetened cocoa powder", "name": "cocoa powder", "quantity": 0.33, "unit": "cup", "category": "baking"},
+      {"raw": "1/2 cup all-purpose flour", "name": "all-purpose flour", "quantity": 0.5, "unit": "cup", "category": "baking"},
+      {"raw": "1 tsp vanilla extract", "name": "vanilla extract", "quantity": 1, "unit": "tsp", "category": "baking"},
+      {"raw": "1/4 tsp salt", "name": "salt", "quantity": 0.25, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/4 tsp baking powder", "name": "baking powder", "quantity": 0.25, "unit": "tsp", "category": "baking"}
+    ]
+  },
+  {
+    "dish": "Chicken Pot Pie",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "2 refrigerated pie crusts", "name": "pie crust", "quantity": 2, "unit": "piece", "category": "bakery"},
+      {"raw": "2 cups cooked chicken, diced", "name": "chicken breast", "quantity": 2, "unit": "cup", "form": "cooked, diced", "category": "meat"},
+      {"raw": "1 1/2 cups frozen mixed vegetables", "name": "frozen mixed vegetables", "quantity": 1.5, "unit": "cup", "category": "produce"},
+      {"raw": "1/3 cup butter", "name": "butter", "quantity": 0.33, "unit": "cup", "category": "dairy"},
+      {"raw": "1/3 cup all-purpose flour", "name": "all-purpose flour", "quantity": 0.33, "unit": "cup", "category": "baking"},
+      {"raw": "1 3/4 cups chicken broth", "name": "chicken broth", "quantity": 1.75, "unit": "cup", "category": "other"},
+      {"raw": "2/3 cup milk", "name": "milk", "quantity": 0.67, "unit": "cup", "category": "dairy"},
+      {"raw": "1/3 cup chopped onion", "name": "onion", "quantity": 0.33, "unit": "cup", "form": "chopped", "category": "produce"},
+      {"raw": "1/2 tsp salt", "name": "salt", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/4 tsp black pepper", "name": "black pepper", "quantity": 0.25, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Potato Salad",
+    "servings": 8,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "3 lb red potatoes", "name": "red potatoes", "quantity": 3, "unit": "lb", "category": "produce"},
+      {"raw": "1 cup mayonnaise", "name": "mayonnaise", "quantity": 1, "unit": "cup", "category": "condiment"},
+      {"raw": "4 hard-boiled eggs, chopped", "name": "eggs", "quantity": 4, "unit": "piece", "form": "hard-boiled", "category": "egg"},
+      {"raw": "2 stalks celery, diced", "name": "celery", "quantity": 2, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "1/2 red onion, diced", "name": "red onion", "quantity": 0.5, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "1 tbsp yellow mustard", "name": "yellow mustard", "quantity": 1, "unit": "tbsp", "category": "condiment"},
+      {"raw": "2 tbsp sweet pickle relish", "name": "sweet pickle relish", "quantity": 2, "unit": "tbsp", "category": "condiment", "optional": true},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/2 tsp black pepper", "name": "black pepper", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "paprika, for garnish", "name": "paprika", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Pumpkin Pie",
+    "servings": 8,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 refrigerated pie crust", "name": "pie crust", "quantity": 1, "unit": "piece", "category": "bakery"},
+      {"raw": "1 (15 oz) can pumpkin puree", "name": "pumpkin puree", "quantity": 1, "unit": "can", "category": "produce"},
+      {"raw": "1 (12 oz) can evaporated milk", "name": "evaporated milk", "quantity": 1, "unit": "can", "category": "dairy"},
+      {"raw": "2 large eggs", "name": "eggs", "quantity": 2, "unit": "piece", "category": "egg"},
+      {"raw": "3/4 cup granulated sugar", "name": "granulated sugar", "quantity": 0.75, "unit": "cup", "category": "sweetener"},
+      {"raw": "1 tsp ground cinnamon", "name": "cinnamon", "quantity": 1, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1/2 tsp ground ginger", "name": "ground ginger", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/4 tsp ground cloves", "name": "cloves", "quantity": 0.25, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1/2 tsp salt", "name": "salt", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Cornbread",
+    "servings": 9,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 cup yellow cornmeal", "name": "cornmeal", "quantity": 1, "unit": "cup", "category": "baking"},
+      {"raw": "1 cup all-purpose flour", "name": "all-purpose flour", "quantity": 1, "unit": "cup", "category": "baking"},
+      {"raw": "1 cup buttermilk", "name": "buttermilk", "quantity": 1, "unit": "cup", "category": "dairy"},
+      {"raw": "1/4 cup granulated sugar", "name": "granulated sugar", "quantity": 0.25, "unit": "cup", "category": "sweetener"},
+      {"raw": "1 large egg", "name": "eggs", "quantity": 1, "unit": "piece", "category": "egg"},
+      {"raw": "1/4 cup melted butter", "name": "butter", "quantity": 0.25, "unit": "cup", "form": "melted", "category": "dairy"},
+      {"raw": "1 tbsp baking powder", "name": "baking powder", "quantity": 1, "unit": "tbsp", "category": "baking"},
+      {"raw": "1/2 tsp salt", "name": "salt", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Coleslaw",
+    "servings": 8,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 head green cabbage, shredded", "name": "green cabbage", "quantity": 1, "unit": "piece", "form": "shredded", "category": "produce"},
+      {"raw": "2 carrots, grated", "name": "carrots", "quantity": 2, "unit": "piece", "form": "grated", "category": "produce"},
+      {"raw": "3/4 cup mayonnaise", "name": "mayonnaise", "quantity": 0.75, "unit": "cup", "category": "condiment"},
+      {"raw": "2 tbsp apple cider vinegar", "name": "apple cider vinegar", "quantity": 2, "unit": "tbsp", "category": "condiment"},
+      {"raw": "2 tbsp granulated sugar", "name": "granulated sugar", "quantity": 2, "unit": "tbsp", "category": "sweetener"},
+      {"raw": "1/2 tsp celery seed", "name": "celery seed", "quantity": 0.5, "unit": "tsp", "category": "spice_herb", "optional": true},
+      {"raw": "1/2 tsp salt", "name": "salt", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1/4 tsp black pepper", "name": "black pepper", "quantity": 0.25, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Chicken Noodle Soup",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb boneless chicken breast", "name": "chicken breast", "quantity": 1, "unit": "lb", "category": "meat"},
+      {"raw": "8 cups chicken broth", "name": "chicken broth", "quantity": 8, "unit": "cup", "category": "other"},
+      {"raw": "3 cups egg noodles", "name": "egg noodles", "quantity": 3, "unit": "cup", "category": "grain"},
+      {"raw": "3 carrots, sliced", "name": "carrots", "quantity": 3, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "3 stalks celery, sliced", "name": "celery", "quantity": 3, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "1 onion, diced", "name": "onion", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tsp dried thyme", "name": "thyme", "quantity": 1, "unit": "tsp", "form": "dried", "category": "spice_herb"},
+      {"raw": "2 tbsp chopped parsley", "name": "parsley", "quantity": 2, "unit": "tbsp", "form": "chopped", "category": "spice_herb", "optional": true},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Deviled Eggs",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "6 large eggs, hard-boiled", "name": "eggs", "quantity": 6, "unit": "piece", "form": "hard-boiled", "category": "egg"},
+      {"raw": "1/4 cup mayonnaise", "name": "mayonnaise", "quantity": 0.25, "unit": "cup", "category": "condiment"},
+      {"raw": "1 tsp yellow mustard", "name": "yellow mustard", "quantity": 1, "unit": "tsp", "category": "condiment"},
+      {"raw": "1 tsp white vinegar", "name": "white vinegar", "quantity": 1, "unit": "tsp", "category": "condiment", "optional": true},
+      {"raw": "1/8 tsp salt", "name": "salt", "quantity": 0.125, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "paprika, for garnish", "name": "paprika", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Beef Stroganoff",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb beef sirloin, thinly sliced", "name": "beef sirloin", "quantity": 1, "unit": "lb", "form": "sliced", "category": "meat"},
+      {"raw": "8 oz egg noodles", "name": "egg noodles", "quantity": 8, "unit": "oz", "category": "grain"},
+      {"raw": "8 oz mushrooms, sliced", "name": "mushrooms", "quantity": 8, "unit": "oz", "form": "sliced", "category": "produce"},
+      {"raw": "1 cup sour cream", "name": "sour cream", "quantity": 1, "unit": "cup", "category": "dairy"},
+      {"raw": "1 onion, sliced", "name": "onion", "quantity": 1, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "1 cup beef broth", "name": "beef broth", "quantity": 1, "unit": "cup", "category": "other"},
+      {"raw": "2 tbsp butter", "name": "butter", "quantity": 2, "unit": "tbsp", "category": "dairy"},
+      {"raw": "2 tbsp all-purpose flour", "name": "all-purpose flour", "quantity": 2, "unit": "tbsp", "category": "baking"},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tsp dijon mustard", "name": "dijon mustard", "quantity": 1, "unit": "tsp", "category": "condiment", "optional": true},
+      {"raw": "1/2 tsp salt", "name": "salt", "quantity": 0.5, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Baked Ziti",
+    "servings": 8,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb ziti", "name": "ziti", "quantity": 1, "unit": "lb", "category": "grain"},
+      {"raw": "1 (24 oz) jar marinara sauce", "name": "marinara sauce", "quantity": 24, "unit": "oz", "category": "condiment"},
+      {"raw": "15 oz ricotta cheese", "name": "ricotta cheese", "quantity": 15, "unit": "oz", "category": "dairy"},
+      {"raw": "2 cups shredded mozzarella cheese", "name": "mozzarella cheese", "quantity": 2, "unit": "cup", "form": "shredded", "category": "dairy"},
+      {"raw": "1/2 cup grated parmesan cheese", "name": "parmesan cheese", "quantity": 0.5, "unit": "cup", "form": "grated", "category": "dairy"},
+      {"raw": "1 lb Italian sausage", "name": "italian sausage", "quantity": 1, "unit": "lb", "category": "meat", "optional": true},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tsp dried basil", "name": "basil", "quantity": 1, "unit": "tsp", "form": "dried", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Italian Meatballs",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb ground beef", "name": "ground beef", "quantity": 1, "unit": "lb", "category": "meat"},
+      {"raw": "1/2 lb ground pork", "name": "ground pork", "quantity": 0.5, "unit": "lb", "category": "meat"},
+      {"raw": "1/2 cup bread crumbs", "name": "bread crumbs", "quantity": 0.5, "unit": "cup", "category": "bakery"},
+      {"raw": "1/2 cup grated parmesan cheese", "name": "parmesan cheese", "quantity": 0.5, "unit": "cup", "form": "grated", "category": "dairy"},
+      {"raw": "2 large eggs", "name": "eggs", "quantity": 2, "unit": "piece", "category": "egg"},
+      {"raw": "1/3 cup milk", "name": "milk", "quantity": 0.33, "unit": "cup", "category": "dairy"},
+      {"raw": "3 cloves garlic, minced", "name": "garlic", "quantity": 3, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "2 tbsp chopped parsley", "name": "parsley", "quantity": 2, "unit": "tbsp", "form": "chopped", "category": "spice_herb"},
+      {"raw": "1 tsp dried oregano", "name": "oregano", "quantity": 1, "unit": "tsp", "form": "dried", "category": "spice_herb"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Zuppa Toscana",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb Italian sausage", "name": "italian sausage", "quantity": 1, "unit": "lb", "category": "meat"},
+      {"raw": "1 1/2 lb russet potatoes, sliced", "name": "russet potatoes", "quantity": 1.5, "unit": "lb", "form": "sliced", "category": "produce"},
+      {"raw": "1 bunch kale, chopped", "name": "kale", "quantity": 1, "unit": "piece", "form": "chopped", "category": "produce"},
+      {"raw": "6 cups chicken broth", "name": "chicken broth", "quantity": 6, "unit": "cup", "category": "other"},
+      {"raw": "1 cup heavy cream", "name": "heavy cream", "quantity": 1, "unit": "cup", "category": "dairy"},
+      {"raw": "4 slices bacon, chopped", "name": "bacon", "quantity": 4, "unit": "slice", "form": "chopped", "category": "meat"},
+      {"raw": "1 onion, diced", "name": "onion", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "3 cloves garlic, minced", "name": "garlic", "quantity": 3, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1/2 tsp red pepper flakes", "name": "red pepper flakes", "quantity": 0.5, "unit": "tsp", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Mexican Rice",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 1/2 cups long-grain white rice", "name": "long-grain white rice", "quantity": 1.5, "unit": "cup", "category": "grain"},
+      {"raw": "1 (8 oz) can tomato sauce", "name": "tomato sauce", "quantity": 1, "unit": "can", "category": "condiment"},
+      {"raw": "2 1/2 cups chicken broth", "name": "chicken broth", "quantity": 2.5, "unit": "cup", "category": "other"},
+      {"raw": "1/2 onion, diced", "name": "onion", "quantity": 0.5, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "3 tbsp vegetable oil", "name": "vegetable oil", "quantity": 3, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "1 tsp ground cumin", "name": "cumin", "quantity": 1, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "chopped cilantro, for garnish", "name": "cilantro", "form": "chopped", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Chicken Enchiladas",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "10 flour tortillas (8 inch)", "name": "flour tortillas", "quantity": 10, "unit": "piece", "category": "bakery"},
+      {"raw": "3 cups shredded cooked chicken", "name": "chicken breast", "quantity": 3, "unit": "cup", "form": "cooked, shredded", "category": "meat"},
+      {"raw": "2 (10 oz) cans red enchilada sauce", "name": "enchilada sauce", "quantity": 2, "unit": "can", "category": "condiment"},
+      {"raw": "2 cups shredded Monterey Jack cheese", "name": "monterey jack cheese", "quantity": 2, "unit": "cup", "form": "shredded", "category": "dairy"},
+      {"raw": "1/2 onion, diced", "name": "onion", "quantity": 0.5, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "1 (4 oz) can diced green chiles", "name": "green chiles", "quantity": 1, "unit": "can", "form": "diced", "category": "produce"},
+      {"raw": "1 tsp ground cumin", "name": "cumin", "quantity": 1, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "sour cream, for serving", "name": "sour cream", "category": "dairy", "optional": true}
+    ]
+  },
+  {
+    "dish": "Steak Fajitas",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 1/2 lb flank steak", "name": "flank steak", "quantity": 1.5, "unit": "lb", "category": "meat"},
+      {"raw": "8 flour tortillas", "name": "flour tortillas", "quantity": 8, "unit": "piece", "category": "bakery"},
+      {"raw": "2 bell peppers, sliced", "name": "bell peppers", "quantity": 2, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "1 onion, sliced", "name": "onion", "quantity": 1, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "2 limes, juiced", "name": "lime", "quantity": 2, "unit": "piece", "form": "juiced", "category": "produce"},
+      {"raw": "3 tbsp vegetable oil", "name": "vegetable oil", "quantity": 3, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tbsp chili powder", "name": "chili powder", "quantity": 1, "unit": "tbsp", "category": "spice_herb"},
+      {"raw": "1 tsp ground cumin", "name": "cumin", "quantity": 1, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"}
+    ]
+  },
+  {
+    "dish": "Black Bean Soup",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "3 (15 oz) cans black beans", "name": "black beans", "quantity": 3, "unit": "can", "category": "legume"},
+      {"raw": "4 cups vegetable broth", "name": "vegetable broth", "quantity": 4, "unit": "cup", "category": "other"},
+      {"raw": "1 onion, diced", "name": "onion", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "1 carrot, diced", "name": "carrots", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "1 stalk celery, diced", "name": "celery", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "4 cloves garlic, minced", "name": "garlic", "quantity": 4, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "2 tbsp olive oil", "name": "olive oil", "quantity": 2, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "2 tsp ground cumin", "name": "cumin", "quantity": 2, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1 lime, juiced", "name": "lime", "quantity": 1, "unit": "piece", "form": "juiced", "category": "produce"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "chopped cilantro, for garnish", "name": "cilantro", "form": "chopped", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Kung Pao Chicken",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb boneless chicken thighs, cubed", "name": "chicken thighs", "quantity": 1, "unit": "lb", "form": "cubed", "category": "meat"},
+      {"raw": "1/2 cup roasted peanuts", "name": "peanuts", "quantity": 0.5, "unit": "cup", "form": "roasted", "category": "nut_seed"},
+      {"raw": "8 dried red chiles", "name": "dried red chiles", "quantity": 8, "unit": "piece", "category": "spice_herb"},
+      {"raw": "3 tbsp soy sauce", "name": "soy sauce", "quantity": 3, "unit": "tbsp", "category": "condiment"},
+      {"raw": "1 tbsp rice vinegar", "name": "rice vinegar", "quantity": 1, "unit": "tbsp", "category": "condiment"},
+      {"raw": "1 tbsp cornstarch", "name": "cornstarch", "quantity": 1, "unit": "tbsp", "category": "baking"},
+      {"raw": "1 tbsp granulated sugar", "name": "granulated sugar", "quantity": 1, "unit": "tbsp", "category": "sweetener"},
+      {"raw": "3 cloves garlic, minced", "name": "garlic", "quantity": 3, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tbsp fresh ginger, minced", "name": "ginger", "quantity": 1, "unit": "tbsp", "form": "minced", "category": "produce"},
+      {"raw": "3 green onions, sliced", "name": "green onions", "quantity": 3, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "2 tbsp vegetable oil", "name": "vegetable oil", "quantity": 2, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "1 tsp Sichuan peppercorns", "name": "sichuan peppercorns", "quantity": 1, "unit": "tsp", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Egg Drop Soup",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "4 cups chicken broth", "name": "chicken broth", "quantity": 4, "unit": "cup", "category": "other"},
+      {"raw": "3 large eggs, beaten", "name": "eggs", "quantity": 3, "unit": "piece", "form": "beaten", "category": "egg"},
+      {"raw": "2 tbsp cornstarch", "name": "cornstarch", "quantity": 2, "unit": "tbsp", "category": "baking"},
+      {"raw": "1 tsp soy sauce", "name": "soy sauce", "quantity": 1, "unit": "tsp", "category": "condiment"},
+      {"raw": "1/2 tsp sesame oil", "name": "sesame oil", "quantity": 0.5, "unit": "tsp", "category": "oil_fat"},
+      {"raw": "1/2 tsp grated fresh ginger", "name": "ginger", "quantity": 0.5, "unit": "tsp", "form": "grated", "category": "produce"},
+      {"raw": "2 green onions, sliced", "name": "green onions", "quantity": 2, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "1/8 tsp white pepper", "name": "white pepper", "quantity": 0.125, "unit": "tsp", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Beef and Broccoli Stir-Fry",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 lb flank steak, thinly sliced", "name": "flank steak", "quantity": 1, "unit": "lb", "form": "sliced", "category": "meat"},
+      {"raw": "4 cups broccoli florets", "name": "broccoli", "quantity": 4, "unit": "cup", "form": "florets", "category": "produce"},
+      {"raw": "1/3 cup soy sauce", "name": "soy sauce", "quantity": 0.33, "unit": "cup", "category": "condiment"},
+      {"raw": "2 tbsp oyster sauce", "name": "oyster sauce", "quantity": 2, "unit": "tbsp", "category": "condiment"},
+      {"raw": "2 tbsp brown sugar", "name": "brown sugar", "quantity": 2, "unit": "tbsp", "category": "sweetener"},
+      {"raw": "1 tbsp cornstarch", "name": "cornstarch", "quantity": 1, "unit": "tbsp", "category": "baking"},
+      {"raw": "3 cloves garlic, minced", "name": "garlic", "quantity": 3, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tbsp fresh ginger, minced", "name": "ginger", "quantity": 1, "unit": "tbsp", "form": "minced", "category": "produce"},
+      {"raw": "2 tbsp vegetable oil", "name": "vegetable oil", "quantity": 2, "unit": "tbsp", "category": "oil_fat"},
+      {"raw": "1 tsp sesame oil", "name": "sesame oil", "quantity": 1, "unit": "tsp", "category": "oil_fat", "optional": true}
+    ]
+  },
+  {
+    "dish": "Butter Chicken",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1 1/2 lb boneless chicken thighs", "name": "chicken thighs", "quantity": 1.5, "unit": "lb", "category": "meat"},
+      {"raw": "1/2 cup plain yogurt", "name": "plain yogurt", "quantity": 0.5, "unit": "cup", "category": "dairy"},
+      {"raw": "1 (15 oz) can tomato sauce", "name": "tomato sauce", "quantity": 1, "unit": "can", "category": "condiment"},
+      {"raw": "1 cup heavy cream", "name": "heavy cream", "quantity": 1, "unit": "cup", "category": "dairy"},
+      {"raw": "4 tbsp butter", "name": "butter", "quantity": 4, "unit": "tbsp", "category": "dairy"},
+      {"raw": "1 onion, diced", "name": "onion", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "4 cloves garlic, minced", "name": "garlic", "quantity": 4, "unit": "clove", "form": "minced", "category": "produce"},
+      {"raw": "1 tbsp fresh ginger, grated", "name": "ginger", "quantity": 1, "unit": "tbsp", "form": "grated", "category": "produce"},
+      {"raw": "2 tsp garam masala", "name": "garam masala", "quantity": 2, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1 tsp ground turmeric", "name": "turmeric", "quantity": 1, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1 tsp chili powder", "name": "chili powder", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1 tsp dried fenugreek leaves", "name": "dried fenugreek leaves", "quantity": 1, "unit": "tsp", "category": "spice_herb", "optional": true}
+    ]
+  },
+  {
+    "dish": "Naan",
+    "servings": 8,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "3 cups all-purpose flour", "name": "all-purpose flour", "quantity": 3, "unit": "cup", "category": "baking"},
+      {"raw": "2 1/4 tsp active dry yeast", "name": "active dry yeast", "quantity": 2.25, "unit": "tsp", "category": "baking"},
+      {"raw": "1/2 cup plain yogurt", "name": "plain yogurt", "quantity": 0.5, "unit": "cup", "category": "dairy"},
+      {"raw": "1/2 cup warm milk", "name": "milk", "quantity": 0.5, "unit": "cup", "form": "warm", "category": "dairy"},
+      {"raw": "1 tsp granulated sugar", "name": "granulated sugar", "quantity": 1, "unit": "tsp", "category": "sweetener"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "3 tbsp melted butter or ghee", "name": "butter", "quantity": 3, "unit": "tbsp", "form": "melted", "category": "dairy"},
+      {"raw": "2 cloves garlic, minced", "name": "garlic", "quantity": 2, "unit": "clove", "form": "minced", "category": "produce", "optional": true}
+    ]
+  },
+  {
+    "dish": "Falafel",
+    "servings": 4,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "2 cups dried chickpeas, soaked overnight", "name": "dried chickpeas", "quantity": 2, "unit": "cup", "form": "soaked", "category": "legume"},
+      {"raw": "1 onion, roughly chopped", "name": "onion", "quantity": 1, "unit": "piece", "form": "chopped", "category": "produce"},
+      {"raw": "4 cloves garlic", "name": "garlic", "quantity": 4, "unit": "clove", "category": "produce"},
+      {"raw": "1 cup fresh parsley", "name": "parsley", "quantity": 1, "unit": "cup", "category": "spice_herb"},
+      {"raw": "1/2 cup fresh cilantro", "name": "cilantro", "quantity": 0.5, "unit": "cup", "category": "spice_herb"},
+      {"raw": "2 tsp ground cumin", "name": "cumin", "quantity": 2, "unit": "tsp", "form": "ground", "category": "spice_herb"},
+      {"raw": "1 tsp ground coriander", "name": "ground coriander", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1 tsp baking soda", "name": "baking soda", "quantity": 1, "unit": "tsp", "category": "baking"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "vegetable oil, for frying", "name": "vegetable oil", "category": "oil_fat"},
+      {"raw": "pita bread, for serving", "name": "pita bread", "category": "bakery", "optional": true},
+      {"raw": "tahini sauce, for serving", "name": "tahini", "category": "condiment", "optional": true}
+    ]
+  },
+  {
+    "dish": "Tabbouleh",
+    "servings": 6,
+    "source": "golden_manual",
+    "ingredients": [
+      {"raw": "1/2 cup fine bulgur wheat", "name": "bulgur wheat", "quantity": 0.5, "unit": "cup", "category": "grain"},
+      {"raw": "3 bunches flat-leaf parsley, finely chopped", "name": "parsley", "quantity": 3, "unit": "piece", "form": "chopped", "category": "spice_herb"},
+      {"raw": "1/2 cup fresh mint, chopped", "name": "mint", "quantity": 0.5, "unit": "cup", "form": "chopped", "category": "spice_herb"},
+      {"raw": "3 tomatoes, diced", "name": "tomatoes", "quantity": 3, "unit": "piece", "form": "diced", "category": "produce"},
+      {"raw": "4 green onions, sliced", "name": "green onions", "quantity": 4, "unit": "piece", "form": "sliced", "category": "produce"},
+      {"raw": "1/3 cup lemon juice", "name": "lemon", "quantity": 2, "unit": "piece", "form": "juiced", "category": "produce"},
+      {"raw": "1/3 cup olive oil", "name": "olive oil", "quantity": 0.33, "unit": "cup", "category": "oil_fat"},
+      {"raw": "1 tsp salt", "name": "salt", "quantity": 1, "unit": "tsp", "category": "spice_herb"},
+      {"raw": "1 cucumber, diced", "name": "cucumber", "quantity": 1, "unit": "piece", "form": "diced", "category": "produce", "optional": true}
+    ]
+  }
+]

@@ -35,10 +35,12 @@ STEPS = {
     "refine-all": "pantrypath_pipeline.refine:run_all",
     "assemble-catalog": "pantrypath_pipeline.catalog_build:run",
     "validate-catalog": "pantrypath_pipeline.validate.expectations:run_catalog",
+    "eval-catalog": "pantrypath_pipeline.evaluate:run_catalog",
     "load-sqlite": "pantrypath_pipeline.store:run",
     "compute-stats": "pantrypath_pipeline.validate.stats:run",
     "check-drift": "pantrypath_pipeline.validate.drift:run",
     "bias-report": "pantrypath_pipeline.bias:run",
+    "freeze-seen-products": "pantrypath_pipeline.bias:run_freeze_seen",  # by hand, not in the DAG
     "dvc-version": "pantrypath_pipeline.versioning:run",
     "notify": "pantrypath_pipeline.notify:run",
 }

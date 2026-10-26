@@ -264,6 +264,70 @@ def test_missing_snapshot_is_reported(cfg):
         bias.run(cfg, assess_fn=fake_assess)
 
 
+def _write_snapshot(cfg, products):
+    rows = [{"code": p["barcode"], "traces_tags": [], **p} for p in products]
+    pq.write_table(pa.Table.from_pylist(rows, schema=SCHEMA), cfg.path(cfg["off"]["output"]))
+
+
+def test_no_seen_list_means_no_held_out_check(snapshot_cfg):
+    bias.run(snapshot_cfg, assess_fn=fake_assess)
+    report = json.loads(snapshot_cfg.path(snapshot_cfg["bias"]["output_json"]).read_text())
+    assert report["products"]["held_out"]["status"] == "no_seen_list"
+    assert report["products"]["held_out"]["products"] == 0
+    markdown = snapshot_cfg.path(snapshot_cfg["bias"]["output_md"]).read_text()
+    assert "No list of seen products" in markdown
+
+
+def test_frozen_snapshot_has_no_held_out_products(snapshot_cfg):
+    frozen = bias.run_freeze_seen(snapshot_cfg)
+    assert frozen["seen_products"] == 10
+    summary = bias.run(snapshot_cfg, assess_fn=fake_assess)
+    assert summary["held_out_products"] == 0
+    markdown = snapshot_cfg.path(snapshot_cfg["bias"]["output_md"]).read_text()
+    assert "**0 held-out products in this snapshot**" in markdown
+
+
+def test_held_out_scores_only_products_added_after_the_freeze(snapshot_cfg, products):
+    _write_snapshot(snapshot_cfg, products[:6])
+    bias.run_freeze_seen(snapshot_cfg)
+    _write_snapshot(snapshot_cfg, products)  # a later snapshot adds 4 products
+    path = snapshot_cfg.path(snapshot_cfg["off"]["output"])
+    new = {p["barcode"] for p in products[6:]}
+    labelled_new = [r for r in bias.load_rows(path, where=bias.LABELLED_FILTER)
+                    if r["barcode"] in new]
+
+    p = bias._jsonable(bias.products_section(snapshot_cfg, bias._off_evidence_fn(),
+                                             fake_assess))
+    h = p["held_out"]
+    assert h["status"] == "ok" and h["seen_products"] == 6
+    assert h["products"] == len(labelled_new) > 0
+    expected = bias._truth_counts(labelled_new)
+    assert h["truth_counts"] == expected
+    verdicts = sum(c["safe"] + c["unsafe"] for c in expected.values())
+    assert h["correctness"]["full"]["pooled"]["n"] == verdicts
+    # the fixed-sample numbers still use every product
+    assert p["labelled_products"] == 9
+
+
+def test_freezing_again_adds_only_new_barcodes(snapshot_cfg, products):
+    _write_snapshot(snapshot_cfg, products[:6])
+    assert bias.run_freeze_seen(snapshot_cfg)["seen_products"] == 6
+    _write_snapshot(snapshot_cfg, products)
+    assert bias.run_freeze_seen(snapshot_cfg)["seen_products"] == 10
+    assert bias.run_freeze_seen(snapshot_cfg)["seen_products"] == 10  # no duplicates
+
+
+def test_held_out_markdown_flags_small_sets():
+    pooled = {"n": 3, "unknown_rate": 0.0, "accuracy_decided": 1.0, "false_safe_rate": 0.0,
+              "safe_found_rate": 1.0}
+    h = {"status": "ok", "frozen_on": "2026-10-26", "seen_products": 100, "products": 2,
+         "correctness": {m: {p: pooled for p in [*bias.PROFILES, "pooled"]}
+                         for m in (bias.BEFORE, bias.AFTER)}}
+    text = "\n".join(bias._held_out_md(h, min_size=30))
+    assert "**2 held-out products** with a ground truth (fewer than 30" in text
+    assert "| all users | 3 | 0% → 0% | 100% → 100% | 0.0% → 0.0% | 100% → 100% |" in text
+
+
 def test_sample_is_the_same_every_run(snapshot_cfg):
     path = snapshot_cfg.path(snapshot_cfg["off"]["output"])
     first = [r["barcode"] for r in bias.load_rows(path, limit=4, seed=7)]

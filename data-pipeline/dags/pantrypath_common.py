@@ -43,6 +43,7 @@ STEP_TIMEOUT_MIN = {
     "refine-dish": 10,
     "assemble-catalog": 15,
     "validate-catalog": 15,
+    "eval-catalog": 10,
     "load-sqlite": 15,
     "compute-stats": 20,
     "check-drift": 10,

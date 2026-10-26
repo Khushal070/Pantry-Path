@@ -12,7 +12,7 @@ Pantry Path helps people with allergies and diets find groceries for a dish they
 
 What happens after that file (the final answer, the UI and the route) is built by other teammates. We trained no model in this phase. We did use an LLM to clean up the recipe data, but only before `result.json` is written, never to change its verdicts.
 
-There are two parts. A weekly Airflow pipeline builds the reference data: a catalog of 100 dishes and an allergen snapshot of about 412,000 US grocery products. A request flow then answers one user at a time in a few seconds, using live Kroger data.
+There are two parts. A weekly Airflow pipeline builds the reference data: a catalog of 100 dishes and an allergen snapshot of about 410,000 US grocery products. A request flow then answers one user at a time in a few seconds, using live Kroger data.
 
 ## How it works
 
@@ -20,9 +20,9 @@ There are two parts. A weekly Airflow pipeline builds the reference data: a cata
 
 The weekly DAG, `build_reference_data`, has two branches that run in parallel.
 
-**Open Food Facts branch.** We download the daily 8 GB Parquet dump from Hugging Face. DuckDB filters it to the US products that list ingredients or allergens, and normalizes their barcodes to GTIN-13. The result is 411,910 products in a 30 MB file. We then delete the dump.
+**Open Food Facts branch.** We download the daily 8 GB Parquet dump from Hugging Face. DuckDB filters it to the US products that list ingredients or allergens, and normalizes their barcodes to GTIN-13. It also drops products whose ingredient list isn't in English, because our diet rules only read English (about 0.5% of US products). The result is 410,009 products in a 30 MB file. We then delete the dump.
 
-**Food.com branch.** We take 522,000 recipes from Kaggle, clean them and group them into dishes. We then pick 254 candidates: the most popular dishes for each cuisine, plus the 16 dishes from our golden test set.
+**Food.com branch.** We take 522,000 recipes from Kaggle, clean them and group them into dishes. We then pick 254 candidates: the most popular dishes for each cuisine, plus the 16 dishes from our golden recipe set.
 
 Food.com turned out to be patchy in one specific way. It often leaves out the ingredient that defines a dish: lasagna noodles appear in only 2% of its lasagna recipes, and pie crust in none of its quiches. So each candidate goes through an LLM (Claude Opus 5.5) once, which:
 - merges duplicate dishes and drops things that aren't dishes
@@ -35,7 +35,7 @@ Of the 254 candidates, 215 survived, 31 were merged into another dish and 8 were
 That LLM pass cost $6.08 in total. Every reply is saved and versioned. Later runs, ours or a teammate's, pull the saved replies and replay them, so nobody needs an API key and the catalog comes out the same every time.
 
 After both branches finish, the DAG:
-1. loads the catalog into SQLite
+1. scores the catalog against held-out reference recipes and loads it into SQLite
 2. computes statistics and checks for drift and outliers
 3. writes the bias report
 4. versions the outputs with DVC
@@ -64,9 +64,9 @@ We check both outputs with Great Expectations. The Open Food Facts suites run 12
 - every product has ingredients or allergen tags
 - the row count is in the expected range
 
-The latest run had no critical failures and one warning: 52 products where Open Food Facts reports a completeness score above 1. The catalog suites run 20 checks, covering things like dish count, cuisine quotas, at least three ingredients per dish and valid categories. None failed.
+The latest run had no critical failures and one warning: 35 products where Open Food Facts reports a completeness score above 1. The catalog suites run 20 checks, covering things like dish count, cuisine quotas, at least three ingredients per dish and valid categories. None failed.
 
-Each run also writes statistics that DVC can compare between versions, checks drift against the previous run, and flags outliers. The last run flagged 95 outliers: 88 very long ingredient lists and 7 dishes with an unusual number of ingredients. Problems are logged and also emailed to the project address once the Gmail app password is set. Blocking problems fail the run. Warnings only alert.
+Each run also writes statistics that DVC can compare between versions, checks drift against the previous run, and flags outliers. The last run flagged 94 outliers: 87 very long ingredient lists and 7 dishes with an unusual number of ingredients. Problems are logged and emailed to the project address. We tested both kinds on 2026-10-26: the outlier check sent "WARNING: 94 outlier(s) found", and a step with a missing input sent "ERROR: step check-drift failed". Blocking problems fail the run. Warnings only alert. Anyone can get the alerts in their own inbox by putting a Gmail address and its app password in `.env` (see the README).
 
 ## Bias
 
@@ -89,13 +89,30 @@ The quotas come with a trade-off. The added cuisines rest on less data: a median
 
 | | Tags only | Full rules |
 |---|---|---|
-| Products the rules couldn't decide | 77% | 1.0% |
-| Labelled-safe products confirmed safe | 0% | 95% |
+| Products the rules couldn't decide | 77% | 0.6% |
+| Labelled-safe products confirmed safe | 0% | 96% |
 | Unsafe products wrongly called safe | 0.0% | 0.4% |
 
-The gaps that remain are small. Plant-based substitutes are left undecided more often than meals (3.7% against 0.3%), and so are frequently scanned products (4.0% against 0.7% for products never scanned).
+The gaps that remain are small. Bakery and cereal products are left undecided more often than pantry condiments (2.9% against 0.1%), and so are frequently scanned products (1.8% against 0.6% for products never scanned).
 
-These numbers have known limits. We adjusted the rules after looking at mismatches with the same labels, so this isn't a held-out test and the accuracy is likely a little optimistic. The labels themselves are noisy; some "vegan" products list eggs. The full report is in `data-pipeline/reports/bias_report.md`.
+These numbers have known limits. We adjusted the rules after looking at mismatches with the same labels, so this isn't a held-out test and the accuracy is likely a little optimistic. The labels themselves are noisy; some "vegan" products list eggs. The full report is in `data-pipeline/reports/bias_report.md`. The next section adds a held-out check.
+
+## Held-out evaluation
+
+Both things the pipeline decides are now also scored on data nobody looked at while building them.
+
+**The catalog against reference recipes.** We split our hand-written recipes in two. The dev split is the 16 golden recipes we used while building the pipeline, so its score is optimistic. The test split is 27 recipes for other catalog dishes, written after the catalog was frozen. The catalog is replayed from saved LLM replies, so these recipes couldn't have shaped it. A new DAG task, `eval_catalog`, checks how many of each recipe's ingredients the dish profile lists. Salt, pepper and water don't count, since the catalog leaves them out on purpose. We tuned the name matching on the dev split only.
+
+| Split | Dishes | Ingredients found | Without the LLM's additions | Fully covered dishes |
+|---|---|---|---|---|
+| Dev (used while building) | 16 | 91.1% | 87.9% | 7 |
+| Test (held out) | 27 | 89.8% | 86.4% | 13 |
+
+The held-out score is close to the dev score, so the catalog holds up on dishes we never checked by hand. The LLM pass adds about 3 points on unseen dishes. Most misses are recipe variants, like chicken thighs where the catalog lists breasts. A few are naming differences, like "breadcrumbs" versus "bread crumbs". We didn't fix those after seeing the test split, so 89.8% is a lower bound. Held-out recall below 75% sends an alert.
+
+**The diet rules on new products.** The rules were tuned on every labelled product in the 2026-10-24 snapshot, so none of those products can be held out. We froze their 411,910 barcodes. Each run now also scores the labelled products that a newer Open Food Facts snapshot adds. Nobody has looked at those, so they form a true held-out test. The set is empty for the frozen snapshot and grows with every weekly download.
+
+We tried it on the 2026-10-26 dump, two days later, and it caught a problem straight away. Of the 231 new products, 98 had Norwegian ingredient text. The rules only read English, so 19% of held-out verdicts came back unknown, never safe. That's why the snapshot now keeps English ingredient lists only. With that rule, the same dump has 40 new labelled products (47 verdicts): none left unknown, no unsafe product called safe, and every verdict matched the label. That's still a small sample, and it will grow with every weekly snapshot.
 
 ## Making it faster
 
@@ -116,7 +133,7 @@ You need Docker, the repo and the Airflow UI. Start Airflow with `docker compose
 
 We tested exactly that on a fresh copy of the repo on 2026-10-25. All 271 tasks finished green in 4 minutes, and the catalog was identical to ours. The step-by-step guide, with the results you should see, is in `data-pipeline/README.md`.
 
-The code has 681 unit tests that need no network access. A GitHub Actions workflow runs them, along with a lint check, on pushes and pull requests.
+The code has 734 unit tests that need no network access. A GitHub Actions workflow runs them, along with a lint check, on pushes and pull requests.
 
 ## Decisions we made
 
