@@ -1,0 +1,34 @@
+# Gates: the targets in section 7 of docs/model-pipeline-plan.md. A setting is chosen only
+# if it passes the validation and bias gates; the champion is replaced only by one that is
+# no worse on any gated metric and better on the selection score.
+
+validation:
+  a1:
+    allergens_captured: {min: 1.0}      # with the cross-check as a backstop
+    diet_captured: {min: 1.0}
+    unsupported_recall: {min: 1.0}
+    dish_resolution: {min: 0.95}
+    valid_json_rate: {min: 0.99}
+  a2:
+    valid_profile_rate: {min: 0.99}
+    recall: {min: 0.75}
+    core_precision: {min: 0.85}
+
+bias:
+  max_gap: 0.10                         # largest gap between slices, main metric
+  min_group_size: 10                    # smaller groups are reported, not gated
+  main_metric: {a1: allergens_captured, a2: recall}
+
+# On the deployed server only (ml/serving/latency_check.py), not on dev machines or CI
+latency:
+  a1_max_s: 3
+  a2_max_s: 15
+
+# Among the settings that pass, the smallest model wins, then the best weighted score
+score:
+  a1: {allergen_exact: 0.4, dish_resolution: 0.3, diet_accuracy: 0.2, zip_accuracy: 0.1}
+  a2: {recall: 0.6, core_precision: 0.4}
+
+# The small held-out evaluation in GitHub Actions (CPU runner, Ollama)
+ci:
+  limit: {a1: 12, a2: 3}

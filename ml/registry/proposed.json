@@ -1,0 +1,8 @@
+{
+  "candidate": "qwen3-4b",
+  "quantization": "4bit",
+  "server": "ollama",
+  "a1": {"prompt_variant": "base", "temperature": 0.0, "think": false},
+  "a2": {"temperature": 0.0, "think": false},
+  "source": "default: no search has been run yet; replace with select choose --write-proposed"
+}

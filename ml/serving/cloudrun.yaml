@@ -1,0 +1,36 @@
+# Cloud Run service for the model server. deploy.sh fills the ${...} values from the
+# environment with envsubst; nothing project-specific is stored here.
+# Sized for a 4B model at 4-bit on CPU: ~2.5 GB of weights plus the KV cache.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${CLOUD_RUN_SERVICE}
+  labels:
+    cloud.googleapis.com/location: ${GCP_REGION}
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"     # scales to zero when idle
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 1                   # one generation at a time per instance
+      timeoutSeconds: 300
+      serviceAccountName: ${RUN_SERVICE_ACCOUNT}
+      containers:
+        - image: ${IMAGE}
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 24                # up to 2 minutes to load the model
