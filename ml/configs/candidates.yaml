@@ -1,0 +1,53 @@
+# Self-hosted model candidates for A1 (request parsing) and A2 (unseen dishes).
+# Model ids live here only. For one run, MODEL_SERVER_URL overrides the server's base_url,
+# MODEL_NAME the candidate's model id, and MODEL_SERVER_TOKEN adds a bearer token (needed
+# for a private Cloud Run service; leave it unset for a local server).
+
+default_server: ollama
+
+# How to reach each kind of server (base_url without /v1). json_mode sets how the reply
+# is held to the request's JSON schema:
+#   response_format  OpenAI-compatible /v1/chat/completions with response_format json_schema
+#   ollama_format    Ollama's native /api/chat with the schema in `format`
+#                    (Ollama's /v1 endpoint ignores `format`)
+servers:
+  ollama:
+    base_url: http://localhost:11434
+    # ollama_format, because Ollama's /v1 ignores Qwen's /no_think (tested on 0.40.15:
+    # thinking stays on), while its native `think: false` turns thinking off
+    json_mode: ollama_format
+  vllm:                       # used on Explorer (ml/slurm/)
+    base_url: http://localhost:8000
+    json_mode: response_format
+
+client:
+  temperature: 0
+  # Qwen3 thinking. With ollama_format the client sends Ollama's `think` option; with
+  # response_format (vLLM) it appends Qwen's /no_think switch to the prompt when false.
+  think: false
+  max_output_tokens: 8192     # with thinking on (thinking counts toward this)
+  # With thinking off, per task. Longest normal replies on the dev sets (2026-11-11): A1
+  # 143 tokens, A2 672. A runaway reply (the same allergens repeated) then stops in seconds
+  # instead of running to 8192 tokens, past the read timeout.
+  max_output_tokens_no_think: {a1: 256, a2: 1536}
+  timeout_s: 300              # a 4B model on CPU can take a while per reply
+  max_attempts: 4             # tries per call on 429, server and network errors
+  # A read timeout is tried this many times at most: at temperature 0 the same prompt
+  # usually runs as long again
+  read_timeout_attempts: 2
+  retry_wait_max_s: 60
+  # One subfolder per model + quantization + prompt version + temperature + think, so a
+  # setting never replays another one's answers. Evaluation runs add a fresh subfolder.
+  cache_dir: cache/llm
+
+# Add a candidate with its size, default quantization and a model id per server and
+# quantization. params_b orders candidates for "the smallest model that passes".
+candidates:
+  qwen3-4b:
+    params_b: 4.0
+    default_quantization: 4bit
+    # The hybrid Qwen3-4B (thinking on or off by switch). Ollama's plain qwen3:4b tag is
+    # the thinking-only 2507 build, which ignores /no_think, so it is not used here.
+    quantizations:
+      4bit: {ollama: "qwen3:4b-q4_K_M", vllm: Qwen/Qwen3-4B-AWQ}
+      8bit: {ollama: "qwen3:4b-q8_0", vllm: Qwen/Qwen3-4B-FP8}
