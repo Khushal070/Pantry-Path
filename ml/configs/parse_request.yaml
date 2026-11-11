@@ -1,0 +1,158 @@
+# A1 request parsing: prompt variants, few-shot examples and the deterministic cross-check.
+
+prompt_file: prompts/parse_request.txt
+
+# Prompt variants for the search. examples = how many examples to show, from
+# example_set (default few_shot_examples); extra_rules: true adds the extra_rules text, or
+# names another rules text. The prompt version is '<file version>+<variant>'.
+variants:
+  base: {examples: 0, extra_rules: false}
+  fewshot: {examples: 3, extra_rules: false}
+  rules: {examples: 0, extra_rules: true}
+  fewshot_rules: {examples: 3, extra_rules: true}
+  # From the base dev run of 2026-11-11: kept retracted allergens, diets turned into
+  # allergens, allergens from unsupported needs or the dish name, wrong mappings
+  rules_v2: {examples: 5, example_set: rules_v2_examples, extra_rules: rules_v2_rules}
+
+extra_rules: |
+  - Read every user message; a later message overrides an earlier one ("actually, X is fine").
+  - Words that name a food group still mean the allergen: dairy, lactose, cheese allergy -> milk;
+    shrimp, crab, prawns -> shellfish; almonds, cashews, walnuts -> tree_nuts.
+  - "No meat" means vegetarian. "Plant-based" means vegan.
+  - When you are unsure whether something is an allergy, include it in avoid.
+
+rules_v2_rules: |
+  - Read every user message; a later message overrides an earlier one ("actually, X is fine").
+  - Leave an allergen out of avoid when the shopper says they can eat it, in the same message
+    or a later one: "I can eat X", "I'm fine with X", "X is fine", "X is ok", "not allergic to X".
+  - avoid holds only allergens the shopper asks to avoid, or a condition that means one
+    (celiac -> gluten). A diet never adds allergens: vegan and vegetarian go in diet only.
+  - "No meat", "meatless" and "I don't eat meat" mean vegetarian. "Plant-based" means vegan.
+  - Kosher, halal, keto, low-carb, diabetic, low-sodium, pregnancy, and allergies outside the
+    list (mustard, celery, corn, sulfites) go in extras.unsupported only; they add nothing to avoid.
+  - Foods in the dish's name are not allergies: "egg rolls" or "peanut butter cookies" add
+    nothing to avoid unless the shopper also asks to avoid that food.
+  - Map foods to the list: cod, salmon, tuna, tilapia, anchovies -> fish (never shellfish);
+    shrimp, prawns, crab, lobster, scallops, clams, mussels, oysters -> shellfish;
+    almonds, cashews, walnuts, pecans, pistachios, hazelnuts -> tree_nuts;
+    peanuts, peanut butter, groundnuts -> peanuts; tahini, sesame seeds -> sesame;
+    dairy, lactose, cheese, butter, cream -> milk; soybeans, tofu, edamame -> soy.
+  - List each allergen at most once.
+
+# Dishes here are not in the catalog, so no example overlaps an evaluation dish.
+few_shot_examples:
+  - &risotto
+    chat:
+      - {role: user, content: "need a mushroom risotto for 4, zip 60614. no dairy and no tree nuts pls"}
+    reply:
+      query: mushroom risotto
+      zip: "60614"
+      avoid: [milk, tree_nuts]
+      diet: none
+      extras: {servings: 4, tweaks: [], unsupported: []}
+  - &shepherds_pie
+    chat:
+      - {role: user, content: "I'm vegan and celiac. Looking to make a lentil shepherd's pie, I'm in 94110-2231."}
+    reply:
+      query: lentil shepherd's pie
+      zip: "94110"
+      avoid: [gluten]
+      diet: vegan
+      extras: {servings: null, tweaks: [], unsupported: []}
+  - &shakshuka
+    chat:
+      - {role: user, content: "Shakshuka near 10027, allergic to sesame."}
+      - {role: assistant, content: "Got it. Anything else I should know?"}
+      - {role: user, content: "Sesame is fine actually, but it has to be halal. Make it extra spicy."}
+    reply:
+      query: shakshuka
+      zip: "10027"
+      avoid: []
+      diet: none
+      extras: {servings: null, tweaks: [extra spicy], unsupported: [halal]}
+
+# rules_v2: the three above, plus a same-message "I can eat X" with "no meat", mappings and
+# an allergy outside the list, and allergen words in a dish name next to an unsupported need
+rules_v2_examples:
+  - *risotto
+  - *shepherds_pie
+  - *shakshuka
+  - chat:
+      - {role: user, content: "Black bean burgers for 2 near 30307. No meat, and I can't have cod or cashews. I can eat eggs. Also allergic to mustard."}
+    reply:
+      query: black bean burgers
+      zip: "30307"
+      avoid: [fish, tree_nuts]
+      diet: vegetarian
+      extras: {servings: 2, tweaks: [], unsupported: [mustard_allergy]}
+  - chat:
+      - {role: user, content: "sesame peanut noodles near 60614-2201, I keep kosher. no dairy"}
+    reply:
+      query: sesame peanut noodles
+      zip: "60614"
+      avoid: [milk]
+      diet: none
+      extras: {servings: null, tweaks: [], unsupported: [kosher]}
+
+# Labels the prompt suggests for extras.unsupported (needs the diet rules can't check)
+unsupported_labels: [halal, kosher, low_sodium, diabetic, pregnancy, keto, paleo, low_carb,
+                     low_fat, low_fodmap, pescatarian, mustard_allergy, celery_allergy,
+                     corn_allergy, sulfite_allergy, other]
+
+# Deterministic cross-check: a keyword scan of the user's messages. If the model's avoid
+# misses an allergen the scan found, or its diet is less strict, the result needs the
+# user's confirmation. Unsupported needs found here always end up in extras.unsupported.
+cross_check:
+  # word -> allergen (plurals with -s/-es are added automatically)
+  allergens:
+    milk: [milk, dairy, lactose, casein, whey]
+    egg: [egg]
+    fish: [fish, salmon, tuna, cod, anchovy]
+    shellfish: [shellfish, shrimp, prawn, crab, lobster, crustacean, scallop, clam, oyster,
+                mussel]
+    tree_nuts: [tree nut, nut, almond, cashew, walnut, pecan, pistachio, hazelnut, macadamia]
+    peanuts: [peanut, peanut butter, groundnut]
+    wheat: [wheat, wheat flour]
+    soy: [soy, soya, soybean]
+    sesame: [sesame, sesame seed, tahini]
+    gluten: [gluten]
+  # Words that mean "avoid this allergen" on their own
+  conditions:
+    celiac: gluten
+    coeliac: gluten
+  # An avoid phrase: cue before a list of words ("allergic to eggs and soy"), or a word
+  # followed by a suffix ("nut-free", "egg allergy")
+  avoid_before: [allergic to, allergy to, allergies to, intolerant to, "no", without, avoid,
+                 avoiding, exclude, leave out, "can't have", cannot have, "can't eat",
+                 cannot eat, "don't eat", do not eat, free of, hold the, anything with]
+  avoid_after: [free, allergy, allergies, intolerance]
+  # "Fine" phrases cancel an earlier avoid ("nuts are fine", "not allergic to eggs")
+  fine_before: [fine with, ok with, okay with, can eat, can have, no problem with,
+                not allergic to]
+  fine_after: [is fine, are fine, is ok, are ok, is okay, are okay, is no problem]
+  # A list after a cue ends at a clause like this, or at an item of more than 3 words
+  clause_breaks: [but, though, although, except, so, because]
+  # Diets, strictest last; "not vegan" does not count
+  diets:
+    vegetarian: [vegetarian, no meat, "don't eat meat", meatless, veggie only]
+    vegan: [vegan, plant-based, plant based]
+  diet_negations: ["not", "isn't", "no longer", "not really"]
+  # Needs the diet rules can't check: label -> words (anywhere in the chat)
+  unsupported:
+    halal: [halal]
+    kosher: [kosher]
+    low_sodium: [low-sodium, low sodium, low salt, low-salt]
+    diabetic: [diabetic, diabetes, sugar-free, sugar free, low sugar]
+    pregnancy: [pregnant, pregnancy]
+    keto: [keto, ketogenic]
+    paleo: [paleo]
+    low_carb: [low-carb, low carb]
+    low_fat: [low-fat, low fat]
+    low_fodmap: [low-fodmap, low fodmap, fodmap]
+    pescatarian: [pescatarian]
+  # Allergens the rules don't cover: label -> words, only inside an avoid phrase
+  unsupported_allergens:
+    mustard_allergy: [mustard]
+    celery_allergy: [celery]
+    corn_allergy: [corn]
+    sulfite_allergy: [sulfite]
