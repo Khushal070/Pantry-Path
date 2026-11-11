@@ -1,0 +1,81 @@
+# Evaluation sets. A2 reads the data pipeline's golden recipes and DVC catalog; A1 is
+# generated from catalog dish names with the phrase bank below (seeded, reproducible).
+# The bank is kept apart from the cross-check's synonym table (parse_request.yaml) on
+# purpose: the cross-check is tested on wording it was not written against.
+
+a2:
+  # Catalog dishes ranked by Food.com reviews, cut into equal tiers (most reviewed first)
+  popularity_tiers: [high, mid, low]
+
+a1:
+  seed: 20261110
+  output_dir: evalsets
+  test_fraction: 0.3          # share of catalog dishes whose cases go to the test split
+  cases_per_dish: 6
+  review_sample: 60           # rows in the CSV for teammates to review (both splits)
+  styles: [casual, formal, negation, synonym, typo, late, multi_turn]
+  allergen_count_weights: [0.25, 0.45, 0.30]     # chance of 0, 1, 2 allergens
+  diet_weights: {none: 0.6, vegetarian: 0.2, vegan: 0.2}
+  p_unsupported: 0.2
+  p_servings: 0.3
+  p_alias: 0.4                # ask for the dish by one of its aliases instead of its name
+  # Aliases with these words imply a diet or allergy ("vegan pancakes"), which would make
+  # the expected labels ambiguous, so they are never used
+  alias_skip_words: [vegan, vegetarian, free, keto, paleo, low, sugar, gluten, dairy, healthy,
+                     diabetic, meatless, plant]
+
+  # Plain wording per allergen (every style but synonym)
+  allergen_words:
+    milk: milk
+    egg: eggs
+    fish: fish
+    shellfish: shellfish
+    tree_nuts: tree nuts
+    peanuts: peanuts
+    wheat: wheat
+    soy: soy
+    sesame: sesame
+    gluten: gluten
+  # The synonym style uses these instead: words, or whole sentences for conditions
+  allergen_synonyms:
+    milk: [dairy, lactose]
+    egg: [egg]
+    fish: [salmon, cod]
+    shellfish: [shrimp, crab]
+    tree_nuts: [nuts, almonds, cashews]
+    peanuts: [peanut butter, groundnuts]
+    wheat: [wheat flour]
+    soy: [soya, soybeans]
+    sesame: [tahini, sesame seeds]
+    gluten: []
+  allergen_sentences:
+    gluten: ["I have celiac disease.", "I'm coeliac."]
+
+  diet_sentences:
+    vegetarian: ["I'm vegetarian.", "It has to be vegetarian.", "No meat please."]
+    vegan: ["I'm vegan.", "It should be plant-based.", "Fully vegan please."]
+
+  # label -> sentences; the label is what extras.unsupported must contain
+  unsupported:
+    halal: ["It needs to be halal."]
+    kosher: ["I keep kosher."]
+    low_sodium: ["I'm on a low-sodium diet."]
+    diabetic: ["I'm diabetic, so go easy on sugar."]
+    pregnancy: ["I'm pregnant, so nothing risky."]
+    keto: ["I'm doing keto."]
+    mustard_allergy: ["I'm also allergic to mustard."]
+
+  zip_formats: ["{zip}", "{zip}-{plus4}", "zip {zip}", "ZIP code {zip}"]
+
+  assistant_turn: "Got it. Anything else I should know?"
+
+sensitivity:
+  seed: 7
+  # Paraphrase perturbation: phrase -> replacement (applied case-insensitively)
+  paraphrases:
+    "i'm allergic to": "i have an allergy to"
+    "i am allergic to": "i've got an allergy to"
+    "can you find": "could you look up"
+    "i would like to prepare": "i'm planning to make"
+    "no ": "nothing with "
+    "please": "if you can"
