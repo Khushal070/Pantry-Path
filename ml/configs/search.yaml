@@ -1,0 +1,29 @@
+# Candidate search: every combination of the listed values becomes one task. A1 tasks use
+# every prompt variant; A2 tasks don't (A2 reuses the pipeline's refine_dish prompt
+# unchanged), so A2 has one task per remaining combination and split.
+# `think` is optional: list [false] to search without thinking only.
+
+grids:
+  # A reduced grid for one machine with Ollama: 2 prompts x 2 temperatures x think on/off.
+  local:
+    server: ollama
+    candidates: [qwen3-4b]
+    quantizations: [4bit]
+    a1_prompt_variants: [base, fewshot]
+    temperature: [0, 0.5]
+    think: [false, true]
+    a1_split: dev
+    a2_splits: [dev]
+    limit: {a1: 60, a2: null}   # null = the whole split
+
+  # The full grid on Explorer (ml/slurm/), one Slurm array task per task.
+  explorer:
+    server: vllm
+    candidates: [qwen3-4b]
+    quantizations: [4bit, 8bit]
+    a1_prompt_variants: [base, fewshot, rules]
+    temperature: [0, 0.2, 0.5]
+    think: [false]
+    a1_split: dev
+    a2_splits: [dev, loo]       # loo: 100 dishes, enough to slice by cuisine for the bias gate
+    limit: {a1: null, a2: null}
