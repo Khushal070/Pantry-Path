@@ -1,0 +1,76 @@
+"""Latency check against the deployed model server (A1 per request, A2 per dish).
+
+Runs a few A1 and A2 dev items through the champion's settings against MODEL_SERVER_URL,
+with a fresh cache so every call is real, and compares the mean latency with
+gates.yaml `latency` (p95 is reported too). A private Cloud Run service needs an identity
+token in MODEL_SERVER_TOKEN:
+
+    export MODEL_SERVER_URL=https://<service-url>
+    export MODEL_SERVER_TOKEN="$(gcloud auth print-identity-token)"
+    python ml/serving/latency_check.py [--a1 10] [--a2 3]
+
+The first request after scaling from zero includes the cold start; it is warmed up first
+and not counted.
+"""
+
+import argparse
+import json
+import logging
+import sys
+
+from pantrypath_ml import config, evaluate_a1, evaluate_a2
+from pantrypath_ml.local_llm import RecordingClient, cached_client, get_candidate, load_candidates
+from pantrypath_ml.reporting import new_run_id
+from pantrypath_ml.select import CHAMPION, read_record
+from pantrypath_pipeline.config import secret
+from pantrypath_pipeline.logging_setup import setup_logging
+
+log = logging.getLogger("latency_check")
+
+
+def warm_up(candidate_name: str, quantization: str) -> None:
+    ccfg = load_candidates()
+    candidate = get_candidate(ccfg, candidate_name, quantization=quantization)
+    client = RecordingClient(cached_client(ccfg, candidate, "warmup", run_id=new_run_id("warm")))
+    client.complete_json('Reply with {"ok": true}.', {
+        "type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"],
+        "additionalProperties": False}, purpose="warmup")
+    log.info("Warm-up call took %.1fs (cold start included)", client.take()["latency_s"])
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--a1", type=int, default=10, help="A1 dev cases")
+    parser.add_argument("--a2", type=int, default=3, help="A2 dev dishes")
+    args = parser.parse_args(argv)
+    setup_logging()
+    if not secret("MODEL_SERVER_URL"):
+        parser.error("set MODEL_SERVER_URL to the deployed server")
+    champion = read_record(CHAMPION)
+    if champion is None:
+        parser.error(f"{CHAMPION} has no champion")
+    limits = config.load("gates")["latency"]
+    common = dict(server="ollama", quantization=champion["quantization"], use_mlflow=False,
+                  tags={"stage": "latency_check"})
+    warm_up(champion["candidate"], champion["quantization"])
+    a1 = evaluate_a1.run(champion["candidate"], "dev", limit=args.a1,
+                         variant=champion["a1"]["prompt_variant"],
+                         overrides={k: champion["a1"][k] for k in ("temperature", "think")},
+                         **common)
+    a2 = evaluate_a2.run(champion["candidate"], "dev", limit=args.a2,
+                         overrides={k: champion["a2"][k] for k in ("temperature", "think")},
+                         **common)
+    result = {
+        "a1": {"mean_s": a1["latency_mean_s"], "p95_s": a1["latency_p95_s"],
+               "max_s": limits["a1_max_s"]},
+        "a2": {"mean_s": a2["latency_mean_s"], "p95_s": a2["latency_p95_s"],
+               "max_s": limits["a2_max_s"]},
+    }
+    for r in result.values():
+        r["passed"] = r["mean_s"] is not None and r["mean_s"] <= r["max_s"]
+    print(json.dumps(result))
+    return 0 if all(r["passed"] for r in result.values()) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
