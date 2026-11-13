@@ -5,8 +5,8 @@ On Explorer each Slurm array task runs one task (run-one --index) with --no-mlfl
 many writers on one SQLite file over a network filesystem is unsafe; aggregate.py logs
 them all to MLflow afterwards from one process.
 
-    python -m pantrypath_ml.search list --grid local
-    python -m pantrypath_ml.search run --grid local [--search-id ID]
+    python -m pantrypath_ml.search list --grid local_prompts
+    python -m pantrypath_ml.search run --grid local_prompts [--search-id ID]
     python -m pantrypath_ml.search run-one --grid explorer --index 3 --search-id ID --no-mlflow
     python -m pantrypath_ml.search model --grid explorer --index 3   # id to serve for a task
 """
@@ -44,8 +44,8 @@ def tasks(scfg: Config, grid: str) -> list[dict[str, Any]]:
                 out += [{"task": task, "split": g["a1_split"], "prompt_variant": v, **setting}
                         for v in g["a1_prompt_variants"]]
             else:
-                out += [{"task": task, "split": s, "prompt_variant": None, **setting}
-                        for s in g["a2_splits"]]
+                out += [{"task": task, "split": s, "prompt_variant": v, **setting}
+                        for v in g["a2_prompt_variants"] for s in g["a2_splits"]]
     for i, t in enumerate(out):
         t.update(index=i, server=g["server"], grid=grid)
     return out
@@ -65,7 +65,7 @@ def run_task(t: dict[str, Any], search_id: str, *, use_mlflow: bool) -> dict[str
                   run_id=run_id, use_mlflow=use_mlflow, tags=tags)
     if t["task"] == "a1":
         return evaluate_a1.run(t["candidate"], t["split"], variant=t["prompt_variant"], **common)
-    return evaluate_a2.run(t["candidate"], t["split"], **common)
+    return evaluate_a2.run(t["candidate"], t["split"], variant=t["prompt_variant"], **common)
 
 
 def new_search_id(grid: str) -> str:
@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantrypath_ml.search",
                                      description=__doc__.splitlines()[0])
     parser.add_argument("command", choices=["list", "count", "model", "run", "run-one"])
-    parser.add_argument("--grid", default="local")
+    parser.add_argument("--grid", default="local_prompts")
     parser.add_argument("--index", type=int, help="run-one: the task's position")
     parser.add_argument("--search-id", help="groups the runs of one search (default: new)")
     parser.add_argument("--server", help="override the grid's server (e.g. ollama fallback)")

@@ -1,27 +1,72 @@
-# Candidate search: every combination of the listed values becomes one task. A1 tasks use
-# every prompt variant; A2 tasks don't (A2 reuses the pipeline's refine_dish prompt
-# unchanged), so A2 has one task per remaining combination and split.
-# `think` is optional: list [false] to search without thinking only.
+# Candidate search: every combination of the listed values in a grid becomes one task.
+# A1 tasks use every a1_prompt_variant; A2 tasks every a2_prompt_variant and a2_split.
+# An empty variant list skips that task. `think` is optional: list [false] to search
+# without thinking only. Grids run with the same --search-id are aggregated together.
 
 grids:
-  # A reduced grid for one machine with Ollama: 2 prompts x 2 temperatures x think on/off.
-  local:
+  # The search actually run on one machine with Ollama (2026-11-11 and 12), in stages:
+  # each later stage varies one setting of the prompts the first stage chose. Run all four
+  # with one --search-id to reproduce it (dev runs a1 2b4bec, a7af2c, 814b08, 3ee613;
+  # a2 74bdf5, ef04d0, 6790f1, 967881, 181930). 181930 was a leave-one-out run that still
+  # asked the golden test dishes; loo now leaves them out (rerun as 4).
+  local_prompts:              # 1. prompts, at temperature 0 without thinking
     server: ollama
     candidates: [qwen3-4b]
     quantizations: [4bit]
-    a1_prompt_variants: [base, fewshot]
-    temperature: [0, 0.5]
-    think: [false, true]
+    a1_prompt_variants: [base, rules_v2]
+    a2_prompt_variants: [refine_dish, refine_dish_unknown]
+    temperature: [0]
+    think: [false]
     a1_split: dev
     a2_splits: [dev]
-    limit: {a1: 60, a2: null}   # null = the whole split
+    limit: {a1: null, a2: null}   # null = the whole split
 
-  # The full grid on Explorer (ml/slurm/), one Slurm array task per task.
+  local_temperature:          # 2. the chosen prompts at temperature 0.2
+    server: ollama
+    candidates: [qwen3-4b]
+    quantizations: [4bit]
+    a1_prompt_variants: [rules_v2]
+    a2_prompt_variants: [refine_dish_unknown]
+    temperature: [0.2]
+    think: [false]
+    a1_split: dev
+    a2_splits: [dev]
+    limit: {a1: null, a2: null}
+
+  # 3. the chosen prompts with thinking (A1: 60 cases, ~10x slower). Opt-in only: kept as
+  # the record of how "thinking off" was decided (plan section 8); not part of a normal
+  # local search. Wider thinking runs belong on Explorer.
+  local_think:
+    server: ollama
+    candidates: [qwen3-4b]
+    quantizations: [4bit]
+    a1_prompt_variants: [rules_v2]
+    a2_prompt_variants: [refine_dish_unknown]
+    temperature: [0]
+    think: [true]
+    a1_split: dev
+    a2_splits: [dev]
+    limit: {a1: 60, a2: null}
+
+  local_loo:                  # 4. A2 leave-one-out (100 dishes) for the bias gate
+    server: ollama
+    candidates: [qwen3-4b]
+    quantizations: [4bit]
+    a1_prompt_variants: []
+    a2_prompt_variants: [refine_dish_unknown]
+    temperature: [0]
+    think: [false]
+    a1_split: dev
+    a2_splits: [loo]
+    limit: {a1: null, a2: null}
+
+  # The full grid on Explorer (ml/slurm/), one Slurm array task per task. Not run yet.
   explorer:
     server: vllm
     candidates: [qwen3-4b]
     quantizations: [4bit, 8bit]
     a1_prompt_variants: [base, fewshot, rules]
+    a2_prompt_variants: [refine_dish, refine_dish_unknown]
     temperature: [0, 0.2, 0.5]
     think: [false]
     a1_split: dev

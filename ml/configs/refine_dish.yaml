@@ -1,0 +1,13 @@
+# A2 prompt variants for a dish typed by a user (no recipe data).
+# refine_dish: the pipeline's own prompt (data-pipeline/prompts/refine_dish.txt), through
+#   refine.profile_for_unknown_dish exactly as the request flow runs it.
+# Any other variant: an ml/ prompt file, through refine.refine_dish with the same schema,
+#   validation, one retry and build_profile (profile_for_unknown_dish takes no template).
+# The prompt version is the file's first line ('prompt_version: ...').
+# default: the variant used when none is given (refine_dish_unknown scored higher on the
+# dev runs of 2026-11-11).
+
+default: refine_dish_unknown
+variants:
+  refine_dish: {prompt_file: null}
+  refine_dish_unknown: {prompt_file: prompts/refine_dish_unknown.txt}

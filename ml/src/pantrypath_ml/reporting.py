@@ -6,8 +6,9 @@ import argparse
 import json
 import logging
 import math
+import random
 import secrets
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -45,6 +46,40 @@ def write_json(path: Path, obj: Any) -> None:
     write_json_atomic(path, obj)
 
 
+def sample(items: list[dict[str, Any]], limit: int | None, key: Callable[[dict], Any],
+           seed: int = 0) -> list[dict[str, Any]]:
+    """Up to `limit` items spread over the values key(item) gives (seeded), in their
+    original order. Taking the first N would take them all from the first few dishes.
+
+    key may return one value or a tuple of facets (each a value or a list of values, e.g.
+    style, diet and allergens): each pick is the item whose values are least represented
+    so far, ties going to a seeded random order.
+    """
+    if not limit or limit >= len(items):
+        return list(items)
+    facets = {i: _facets(key(item)) for i, item in enumerate(items)}
+    order = list(range(len(items)))
+    random.Random(seed).shuffle(order)
+    counts: dict[tuple[int, str], int] = {}
+    picked: list[int] = []
+    for _ in range(limit):
+        best = max((i for i in order if i not in picked),
+                   key=lambda i: sum(1 / (1 + counts.get(f, 0)) for f in facets[i]))
+        picked.append(best)
+        for f in facets[best]:
+            counts[f] = counts.get(f, 0) + 1
+    return [items[i] for i in sorted(picked)]
+
+
+def _facets(value: Any) -> list[tuple[int, str]]:
+    parts = value if isinstance(value, tuple) else (value,)
+    out = []
+    for n, part in enumerate(parts):
+        values = part if isinstance(part, list) else [part]
+        out += [(n, str(v)) for v in values or ["none"]]
+    return out
+
+
 def ratio(num: float, den: float) -> float | None:
     return round(num / den, 4) if den else None
 
@@ -69,6 +104,9 @@ def usage_stats(records: list[dict[str, Any]]) -> dict[str, Any]:
         "cached_calls": sum(r.get("cached_calls", 0) for r in records),
         "input_tokens": sum(r.get("input_tokens", 0) for r in records),
         "output_tokens": sum(r.get("output_tokens", 0) for r in records),
+        # None for runs recorded before the count existed
+        "cut_off_calls": sum(r.get("cut_off_calls", 0) for r in records)
+        if any("cut_off_calls" in r for r in records) else None,
     }
 
 

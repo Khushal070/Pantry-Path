@@ -4,15 +4,24 @@ A2 splits:
 - dev: data/golden/recipes.json, looked at while building the pipeline (optimistic);
 - test: data/golden/recipes_heldout.json, held out: read only when asked for explicitly;
 - loo (leave-one-out): every catalog dish asked by name only, its catalog entry as the
-  reference. Catalog entries are LLM-written, so this is a consistency check with enough
-  dishes to slice by cuisine and popularity, not ground truth. The reference's core
-  ingredients count as required; common ones as optional.
+  reference, without the golden test dishes (search and selection read it). Catalog
+  entries are LLM-written, so this is a consistency check with enough dishes to slice by
+  cuisine and popularity, not ground truth. The reference's core ingredients count as
+  required; common ones as optional.
+- loo_full: the same with every catalog dish, the golden test dishes too: held out, for
+  the A2 bias check in `select final` only.
 Golden recipes are read with the pipeline's loader and matched to catalog dishes with the
 same dish_ids overrides as `evaluate.run_catalog`, which gives them cuisine and popularity.
 
 A1: generated from catalog dish names and aliases with the phrase bank in
 configs/evalsets.yaml (seeded), split by dish so test dishes never appear in tuning:
     python -m pantrypath_ml.evalsets generate-a1
+A3: one synthetic result.json per catalog dish (synthetic stores and products, never
+Kroger data), with the same dev/test dishes as A1, validated against the contract:
+    python -m pantrypath_ml.evalsets generate-a3
+The generated chats share their wording with the cross-check's word lists, so A1 also has
+a hand-written `realistic` split (evalsets/a1_realistic.jsonl): everyday phrasing the
+templates don't produce. It is held out like `test` and read only by `select final`.
 """
 
 import argparse
@@ -35,8 +44,9 @@ from pantrypath_pipeline.logging_setup import setup_logging
 
 log = logging.getLogger(__name__)
 
-A2_SPLITS = ("dev", "loo", "test")
-A1_SPLITS = ("dev", "test")
+A2_SPLITS = ("dev", "loo", "loo_full", "test")
+A1_SPLITS = ("dev", "test", "realistic", "realistic_dev")
+HELD_OUT = ("test", "realistic", "loo_full")  # read only for gates and final results
 ALLERGEN_ORDER = [a.value for a in Allergen]
 DIET_ORDER = ["none", "vegetarian", "vegan"]  # least to most strict
 
@@ -46,11 +56,12 @@ class HeldOutError(PipelineError):
 
 
 def _guard_test(split: str, allow_test: bool) -> None:
-    if split == "test":
+    if split in HELD_OUT:
         if not allow_test:
-            raise HeldOutError("The test split is held out: read it only for gates and final "
-                               "results, by asking for it explicitly (--split test)")
-        log.warning("Reading the held-out TEST split (gates and final results only)")
+            raise HeldOutError(f"The {split} split is held out: read it only for gates and "
+                               f"final results, by asking for it explicitly (--split {split})")
+        log.warning("Reading the held-out %s split (gates and final results only)",
+                    split.upper())
 
 
 # ---------------------------------------------------------------- catalog
@@ -85,13 +96,16 @@ def a2_cases(pcfg: Config, ecfg: Config, split: str, *,
     _guard_test(split, allow_test)
     catalog = load_catalog(pcfg)
     tiers = popularity_tiers(catalog, ecfg["a2"]["popularity_tiers"])
-    if split == "loo":
+    if split in ("loo", "loo_full"):
+        held_out = golden_test_dish_ids(pcfg, catalog) if split == "loo" else set()
+        log.info("Leave-one-out: %d catalog dishes, %d left out (golden test dishes)",
+                 len(catalog) - len(held_out), len(held_out))
         return [{
             "case_id": d["dish_id"], "name": d["name"], "dish_id": d["dish_id"],
             "cuisine": d["cuisine"], "popularity": tiers[d["dish_id"]],
             "reference": {"dish": d["name"], "ingredients": [
                 {"name": i["name"], "optional": i["role"] != "core"} for i in d["ingredients"]]},
-        } for d in catalog]
+        } for d in catalog if d["dish_id"] not in held_out]
 
     settings = pcfg["catalog_eval"]
     overrides = {k.lower(): v for k, v in (settings.get("dish_ids") or {}).items()}
@@ -106,6 +120,20 @@ def a2_cases(pcfg: Config, ecfg: Config, split: str, *,
             "reference": recipe,
         })
     return cases
+
+
+def golden_test_dish_ids(pcfg: Config, catalog: list[dict[str, Any]]) -> set[str]:
+    """Catalog dish_ids of the golden test recipes (same mapping as the test split), so
+    the leave-one-out set, which selection reads, never asks a test dish. Only the dish
+    names are used: nothing from the test recipes is scored or logged here."""
+    settings = pcfg["catalog_eval"]
+    overrides = {k.lower(): v for k, v in (settings.get("dish_ids") or {}).items()}
+    out = set()
+    for recipe in read_recipes(pcfg.path(settings["splits"]["test"])):
+        dish = find_dish(recipe["dish"], catalog, overrides)
+        if dish:
+            out.add(dish["dish_id"])
+    return out
 
 
 # ---------------------------------------------------------------- A1 generator
@@ -257,12 +285,17 @@ class _Generator:
         return first, f"Sorry, actually {words[extra]} {verb} fine."
 
 
+def held_out_dish_ids(catalog: list[dict[str, Any]], seed: int, fraction: float) -> set[str]:
+    """The catalog dishes held out for testing (A1 and A3 use the same ones)."""
+    ids = sorted(d["dish_id"] for d in catalog)
+    random.Random(seed).shuffle(ids)
+    return set(ids[:round(len(ids) * float(fraction))])
+
+
 def generate_a1(catalog: list[dict[str, Any]], gcfg: dict[str, Any]) -> dict[str, list[dict]]:
     """{'dev': [...], 'test': [...]}, split by dish, the same for the same seed and catalog."""
     dishes = sorted(catalog, key=lambda d: d["dish_id"])
-    ids = [d["dish_id"] for d in dishes]
-    random.Random(gcfg["seed"]).shuffle(ids)
-    test_ids = set(ids[:round(len(ids) * float(gcfg["test_fraction"]))])
+    test_ids = held_out_dish_ids(catalog, gcfg["seed"], gcfg["test_fraction"])
     gen = _Generator(gcfg, gcfg["seed"])
     styles = gcfg["styles"]
     splits: dict[str, list[dict]] = {"dev": [], "test": []}
@@ -310,24 +343,220 @@ def write_a1(pcfg: Config, ecfg: Config) -> dict[str, Any]:
     return summary
 
 
+# The hand-written chats of the independent draft (evalsets/a1_realistic_dev_source.csv):
+# servings the CSV has no column for, read from the chat by hand
+DRAFT_SERVINGS = {"ind-02": 6, "ind-08": 2, "ind-20": 4, "ind-27": 8}
+FOLLOW_UP = "Got it. Anything else I should know?"
+
+
+def convert_a1_csv(pcfg: Config, ecfg: Config, csv_path: Path) -> dict[str, Any]:
+    """The independent draft CSV -> evalsets/a1_realistic_dev.jsonl, a DEV split of
+    everyday phrasing (tuned on; the held-out realistic split stays untouched). Each dish
+    is resolved with the request flow's catalog lookup; chats whose dish doesn't resolve,
+    or is an A1 test dish, are left out and listed."""
+    from pantrypath_ml.parse_request import ALLERGEN_ORDER
+    from pantrypath_pipeline.store import find_dish as find
+
+    db = pcfg.path(pcfg["catalog"]["sqlite_output"])
+    min_score = float(pcfg["request"]["fuzzy_min_score"])
+    a1 = ecfg["a1"]
+    test_ids = held_out_dish_ids(load_catalog(pcfg), a1["seed"], a1["test_fraction"])
+    labels = set(config.load("parse_request")["unsupported_labels"])
+    cases, unresolved, test_dish = [], [], []
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            dish = find(db, row["dish"], min_score)
+            if dish is None:
+                unresolved.append({"id": row["id"], "dish": row["dish"]})
+                continue
+            if dish.dish_id in test_ids:
+                test_dish.append({"id": row["id"], "dish": row["dish"], "dish_id": dish.dish_id})
+                continue
+            messages = [{"role": "user", "content": row["message_1"]}]
+            if row["message_2"].strip():
+                messages += [{"role": "assistant", "content": FOLLOW_UP},
+                             {"role": "user", "content": row["message_2"]}]
+            avoid = [a for a in ALLERGEN_ORDER if a in row["avoid"].split(";")]
+            unsupported = [u.strip().replace(" ", "_") for u in row["unsupported"].split(";")
+                           if u.strip()]
+            bad = [u for u in unsupported if u not in labels]
+            if bad:
+                raise PipelineError(f"{row['id']}: unknown unsupported label(s) {bad}")
+            cases.append({
+                "case_id": f"a1rd-{row['id']}", "dish_id": dish.dish_id, "dish_text": row["dish"],
+                "messages": messages,
+                "expected": {"zip": row["zip"] or None, "avoid": avoid, "diet": row["diet"],
+                             "servings": DRAFT_SERVINGS.get(row["id"]),
+                             "unsupported": unsupported},
+                "slices": {"style": "realistic", "allergens": avoid, "diet": row["diet"],
+                           "has_unsupported": bool(unsupported)},
+                "split": "realistic_dev"})
+    write_jsonl(a1_path(ecfg, "realistic_dev"), cases)
+    out = {"cases": len(cases), "unresolved": unresolved, "test_dishes_left_out": test_dish,
+           "path": str(a1_path(ecfg, "realistic_dev"))}
+    log.info("A1 realistic_dev: %d cases; %d unresolved, %d on test dishes left out",
+             len(cases), len(unresolved), len(test_dish))
+    return out
+
+
 def load_a1(ecfg: Config, split: str, *, allow_test: bool = False) -> list[dict[str, Any]]:
     if split not in A1_SPLITS:
         raise PipelineError(f"Unknown A1 split {split!r}; use one of {A1_SPLITS}")
     _guard_test(split, allow_test)
     path = a1_path(ecfg, split)
     if not path.is_file():
+        if split == "realistic":
+            raise DataUnavailableError(f"{path} not found; it is hand-written, not generated")
         raise DataUnavailableError(f"{path} not found; run python -m pantrypath_ml.evalsets "
                                    "generate-a1")
-    return read_jsonl(path)
+    cases = read_jsonl(path)
+    if split == "realistic":
+        # removed for independence: worded like the cross-check fixes (unit tests only)
+        excluded = set(ecfg["a1"].get("realistic_excluded") or [])
+        cases = [c for c in cases if c["case_id"] not in excluded]
+    return cases
+
+
+# ---------------------------------------------------------------- A3: synthetic results
+
+STORES = [
+    {"store_id": "SYN00001", "chain": "KROGER", "name": "Synthetic Market North",
+     "address": "1 Test Ave, Testville, OH 45202", "lat": 39.11, "lon": -84.51,
+     "distance_miles": 0.8},
+    {"store_id": "SYN00002", "chain": "KROGER", "name": "Synthetic Market South",
+     "address": "2 Test Ave, Testville, OH 45202", "lat": 39.09, "lon": -84.52,
+     "distance_miles": 2.1},
+]
+# allergens an ingredient's category suggests (with the name check below)
+CATEGORY_ALLERGENS = {"dairy": ["milk"], "egg": ["egg"], "seafood": ["fish", "shellfish"],
+                      "nut_seed": ["tree_nuts", "peanuts", "sesame"],
+                      "grain": ["wheat", "gluten"], "bakery": ["wheat", "gluten"],
+                      "legume": ["soy"]}
+BRANDS = {"safe": "Brightfield", "unsafe": "Harvest Lane", "unknown": "Old Mill"}
+
+
+def synthetic_result(dish: dict[str, Any], avoid: list[str], diet: str, rng: random.Random,
+                     screen: Any, gcfg: dict[str, Any]) -> dict[str, Any]:
+    """A result.json for a catalog dish with synthetic stores and products (never Kroger
+    data). A product conflicts when the ingredient's name or category does; some products
+    are unknown, as in real results."""
+    unknown_share = float(gcfg["unknown_share"])
+    ingredients = []
+    for ing in dish["ingredients"]:
+        category = ing.get("category")
+        conflict = (bool(screen.problems(ing["name"], avoid, diet))
+                    or any(a in avoid for a in CATEGORY_ALLERGENS.get(category, []))
+                    or (diet != "none" and category in ("meat", "seafood"))
+                    or (diet == "vegan" and category in ("dairy", "egg")))
+        products = []
+        for store in rng.sample(STORES, rng.randint(1, len(STORES))):
+            verdict = "unsafe" if conflict else "safe"
+            if rng.random() < unknown_share:
+                verdict = "unknown"
+            products.append({
+                "store_id": store["store_id"], "barcode": None,
+                "name": f"{BRANDS[verdict]} {ing['name'].title()} {store['store_id'][-1]}",
+                "brand": BRANDS[verdict], "size": "1 ct", "in_stock": True, "aisle": None,
+                "verdict": verdict,
+                "reason": {"safe": "Nothing to avoid in the ingredient list",
+                           "unsafe": "Contains something you avoid",
+                           "unknown": "No ingredient list to check"}[verdict],
+                "evidence_source": {"safe": "off", "unsafe": "kroger", "unknown": "none"}[verdict]})
+        ingredients.append({"name": ing["name"], "role": ing.get("role") or "common",
+                            "category": ing.get("category") or "other", "products": products})
+    used = {p["store_id"] for i in ingredients for p in i["products"]}
+    without = [i["name"] for i in ingredients if not any(p["verdict"] == "safe"
+                                                       for p in i["products"])]
+    return {
+        "request": {"query": dish["name"], "zip": "45202", "avoid": avoid, "diet": diet},
+        "dish": {"name": dish["name"], "cuisine": dish.get("cuisine") or "american",
+                 "source": "catalog"},
+        "stores": [s for s in STORES if s["store_id"] in used],
+        "ingredients": ingredients,
+        "summary": {"ingredients_total": len(ingredients),
+                    "with_safe_product": len(ingredients) - len(without),
+                    "without_safe_product": without},
+        "meta": {"generated_at": "2026-11-10T12:00:00Z", "expires_at": "2026-11-11T12:00:00Z",
+                 "providers_used": ["kroger"], "catalog_version": "synthetic",
+                 "schema_version": "1.0"},
+    }
+
+
+def generate_a3(catalog: list[dict[str, Any]], gcfg: dict[str, Any], a1cfg: dict[str, Any],
+                screen: Any) -> dict[str, list[dict]]:
+    """{'dev': [...], 'test': [...]}: one synthetic result.json per catalog dish, split by
+    dish exactly like A1 (the same test dishes), seeded."""
+    from pantrypath_core.result import Result  # the contract: every case must validate
+
+    rng = random.Random(gcfg["seed"])
+    test_ids = held_out_dish_ids(catalog, a1cfg["seed"], a1cfg["test_fraction"])
+    diets = list(gcfg["diet_weights"])
+    splits: dict[str, list[dict]] = {"dev": [], "test": []}
+    for dish in sorted(catalog, key=lambda d: d["dish_id"]):
+        # allergens the dish really has: by ingredient category, or by name ("peanuts")
+        relevant = sorted({a for i in dish["ingredients"]
+                           for a in CATEGORY_ALLERGENS.get(i.get("category"), [])}
+                          | {a for a, pattern in screen.allergens.items()
+                             if any(pattern.search(i["name"].lower())
+                                    for i in dish["ingredients"])})
+        pool = relevant or [a.value for a in Allergen]
+        avoid = sorted(rng.sample(pool, min(len(pool), rng.choice(gcfg["avoid_counts"]))))
+        diet = rng.choices(diets, weights=[gcfg["diet_weights"][d] for d in diets])[0]
+        result = synthetic_result(dish, avoid, diet, rng, screen, gcfg)
+        Result.model_validate(result)
+        split = "test" if dish["dish_id"] in test_ids else "dev"
+        extras = {"servings": rng.choice(gcfg["servings"]), "tweaks": [],
+                  "unsupported": rng.sample(gcfg["unsupported"], 1)
+                  if rng.random() < float(gcfg["unsupported_share"]) else []}
+        splits[split].append({
+            "case_id": f"a3-{dish['dish_id']}", "dish_id": dish["dish_id"], "split": split,
+            "result": result, "extras": extras,
+            "slices": {"cuisine": result["dish"]["cuisine"], "diet": diet,
+                       "avoid_count": len(avoid),
+                       "without_safe": min(len(result["summary"]["without_safe_product"]), 3)}})
+    return splits
+
+
+def a3_path(ecfg: Config, split: str) -> Path:
+    return ecfg.path(ecfg["a3"]["output_dir"]) / f"a3_{split}.jsonl"
+
+
+def write_a3(pcfg: Config, ecfg: Config) -> dict[str, Any]:
+    from pantrypath_ml.answer import SubstituteCheck
+
+    screen = SubstituteCheck(config.load("answer"), config.load("parse_request"))
+    splits = generate_a3(load_catalog(pcfg), ecfg["a3"], ecfg["a1"], screen)
+    for split, cases in splits.items():
+        write_jsonl(a3_path(ecfg, split), cases)
+    summary = {split: len(cases) for split, cases in splits.items()}
+    log.info("A3 evaluation sets written: %s", summary)
+    return summary
+
+
+def load_a3(ecfg: Config, split: str, *, allow_test: bool = False) -> list[dict[str, Any]]:
+    _guard_test(split, allow_test)
+    path = a3_path(ecfg, split)
+    if not path.is_file():
+        raise DataUnavailableError(f"{path} not found; run python -m pantrypath_ml.evalsets "
+                                   "generate-a3")
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantrypath_ml.evalsets",
-                                     description="Generate the A1 evaluation sets")
-    parser.add_argument("command", choices=["generate-a1"])
-    parser.parse_args(argv)
+                                     description="Generate the A1 and A3 evaluation sets")
+    parser.add_argument("command", choices=["generate-a1", "generate-a3", "convert-a1-csv"])
+    parser.add_argument("--csv", type=Path, help="convert-a1-csv: the draft CSV")
+    args = parser.parse_args(argv)
     setup_logging()
-    print(json.dumps(write_a1(config.pipeline_config(), config.load("evalsets"))))
+    if args.command == "convert-a1-csv":
+        if not args.csv:
+            parser.error("convert-a1-csv needs --csv")
+        print(json.dumps(convert_a1_csv(config.pipeline_config(), config.load("evalsets"),
+                                        args.csv)))
+        return 0
+    write = write_a1 if args.command == "generate-a1" else write_a3
+    print(json.dumps(write(config.pipeline_config(), config.load("evalsets"))))
     return 0
 
 

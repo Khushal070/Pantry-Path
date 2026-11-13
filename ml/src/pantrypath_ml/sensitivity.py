@@ -2,12 +2,16 @@
 
 perturb: the same A1 dev cases asked as written and four ways changed (paraphrase, one
 typo, the allergy moved to the end, sentences shuffled); the expected answer stays the
-same, so any drop is sensitivity to wording.
+same, so any drop is sensitivity to wording. Every case's result is kept in cases.jsonl,
+and the report lists the cases that lose a metric against their unperturbed version.
+--only runs some of them; every perturbation is still drawn in the same seeded order, so a
+rerun of one sees the same cases as the full run.
 curves: from a search's comparison table, the main metrics against temperature,
 quantization (bits), few-shot example count and thinking. Several settings share an x
 value, so each point is their mean.
 
-    python -m pantrypath_ml.sensitivity perturb --candidate qwen3-4b [--variant base] --limit 40
+    python -m pantrypath_ml.sensitivity perturb --candidate qwen3-4b [--variant rules_v2] \
+        --limit 40 [--only paraphrase ...]
     python -m pantrypath_ml.sensitivity curves --search-id ID
 """
 
@@ -25,7 +29,7 @@ from typing import Any
 from pantrypath_ml import config, evaluate_a1
 from pantrypath_ml.charts import bar_chart, line_chart, markdown_table, pct
 from pantrypath_ml.evalsets import load_a1, typo
-from pantrypath_ml.reporting import add_model_args, write_json
+from pantrypath_ml.reporting import add_model_args, read_jsonl, sample, write_json, write_jsonl
 from pantrypath_pipeline.logging_setup import setup_logging
 
 log = logging.getLogger(__name__)
@@ -73,37 +77,73 @@ def perturb(case: dict[str, Any], kind: str, rng: random.Random,
     return out
 
 
-def run_perturbations(candidate: str, *, variant: str, limit: int, server: str | None,
-                      quantization: str | None, overrides: dict[str, Any],
-                      use_mlflow: bool) -> dict[str, Any]:
+def run_perturbations(candidate: str, *, variant: str | None, limit: int, server: str | None,
+                      quantization: str | None, overrides: dict[str, Any], use_mlflow: bool,
+                      only: list[str] | None = None) -> dict[str, Any]:
+    """`only`: the case sets to run ('original' and/or perturbation names; default all)."""
     ecfg = config.load("evalsets")
     settings = ecfg["sensitivity"]
-    cases = load_a1(ecfg, "dev")[:limit]
+    variant = variant or config.load("parse_request")["default"]
+    cases = sample(load_a1(ecfg, "dev"), limit, key=lambda c: c["slices"]["style"])
     rng = random.Random(settings["seed"])
     sens_id = f"{datetime.now(UTC):%Y%m%dT%H%M%SZ}-perturb"
     variants = {"original": cases} | {k: [perturb(c, k, rng, settings["paraphrases"])
                                           for c in cases] for k in PERTURBATIONS}
-    summaries = {}
+    if only:
+        variants = {k: v for k, v in variants.items() if k in only}
+    summaries, records = {}, {}
     for name, items in variants.items():
         summaries[name] = evaluate_a1.run(
             candidate, "dev", variant=variant, cases=items, server=server,
             quantization=quantization, overrides=overrides, run_id=f"{sens_id}-{name}",
             use_mlflow=use_mlflow, tags={"sensitivity_id": sens_id, "perturbation": name})
+        records[name] = read_jsonl(config.REPORTS / "a1" / summaries[name]["run_id"]
+                                   / "cases.jsonl")
     folder = config.REPORTS / "sensitivity" / sens_id
+    write_jsonl(folder / "cases.jsonl", [r for rs in records.values() for r in rs])
     table = {name: {m: s.get(m) for m in METRICS} for name, s in summaries.items()}
     chart = bar_chart(folder / "perturbations.png", "A1 dev metrics by perturbation",
                       list(table), {m: [table[n][m] for n in table] for m in METRICS[:3]})
-    base = table["original"]
-    rows = [[name, *(f"{pct(v[m])} ({_delta(v[m], base[m])})" for m in METRICS)]
+    base = table.get("original", {})
+    rows = [[name, *(f"{pct(v[m])} ({_delta(v[m], base.get(m))})" for m in METRICS)]
             for name, v in table.items()]
+    lost = losses(records)
     md = [f"# A1 perturbation test {sens_id}", "",
           f"{len(cases)} dev cases, candidate {candidate}, prompt variant {variant}. "
           "In brackets: change from the unperturbed cases.", "",
-          markdown_table(["Cases", *METRICS], rows), "", f"![perturbations]({chart.name})"]
+          markdown_table(["Cases", *METRICS], rows), "", f"![perturbations]({chart.name})", "",
+          "## Cases that lose a metric", ""]
+    if "original" not in records:
+        md.append("Not compared: the unperturbed cases were not run.")
+    elif lost:
+        md.append(markdown_table(["Case", "Perturbation", "Lost", "Status"],
+                                 [[x["case_id"], x["perturbation"], ", ".join(x["lost"]),
+                                   x["status"]] for x in lost]))
+    else:
+        md.append("None.")
     (folder / "perturbations.md").write_text("\n".join(md) + "\n")
-    write_json(folder / "perturbations.json", {"id": sens_id, "metrics": table})
+    write_json(folder / "perturbations.json", {"id": sens_id, "metrics": table,
+                                               "runs": {n: s["run_id"]
+                                                        for n, s in summaries.items()},
+                                               "lost": lost})
     log.info("Perturbation test -> %s", folder)
     return {"id": sens_id, "metrics": table, "folder": str(folder)}
+
+
+def losses(records: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Per perturbed case, the metrics it fails although its unperturbed version passes."""
+    original = {r["case_id"]: r["score"] for r in records.get("original", [])}
+    out = []
+    for name, rows in records.items():
+        if name == "original":
+            continue
+        for r in rows:
+            base = original.get(r["case_id"].split("~")[0])
+            lost = [m for m in METRICS if base and base[m] and not r["score"][m]]
+            if lost:
+                out.append({"case_id": r["case_id"], "perturbation": name, "lost": lost,
+                            "status": r["result"]["status"]})
+    return out
 
 
 def _delta(value: float | None, base: float | None) -> str:
@@ -181,7 +221,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("perturb")
     add_model_args(p)
-    p.add_argument("--variant", default="base")
+    p.add_argument("--variant", help="A1 prompt variant (default: parse_request.yaml default)")
+    p.add_argument("--only", nargs="+", choices=["original", *PERTURBATIONS],
+                   help="run only these case sets (default: all)")
     c = sub.add_parser("curves")
     c.add_argument("--search-id", required=True)
     args = parser.parse_args(argv)
@@ -192,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     result = run_perturbations(args.candidate, variant=args.variant, limit=args.limit or 40,
                                server=args.server, quantization=args.quantization,
                                overrides={"temperature": args.temperature, "think": args.think},
-                               use_mlflow=not args.no_mlflow)
+                               use_mlflow=not args.no_mlflow, only=args.only)
     print(json.dumps(result))
     return 0
 
