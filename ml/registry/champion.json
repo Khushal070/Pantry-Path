@@ -1,3 +1,85 @@
 {
-  "champion": null
+  "champion": {
+    "candidate": "qwen3-4b",
+    "quantization": "4bit",
+    "a1": {
+      "prompt_variant": "rules_v2",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261111T225007Z-a1-a7af2c"
+    },
+    "a2": {
+      "prompt_variant": "refine_dish_unknown",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261111T222859Z-a2-ef04d0",
+      "bias_run": "20261112T223331Z-a2-6f49bb",
+      "final_bias_run": "20261112T004423Z-a2-181930"
+    },
+    "a3": {
+      "prompt_variant": "hybrid_swaps",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261113T024012Z-a3-12165d"
+    },
+    "params_b": 4.0,
+    "models": {
+      "ollama": "qwen3:4b-q4_K_M",
+      "vllm": "Qwen/Qwen3-4B-AWQ"
+    },
+    "prompt_versions": {
+      "a1": "parse_request/1+rules_v2",
+      "a2": "refine_dish_unknown/1",
+      "a3": "answer/3"
+    },
+    "metrics": {
+      "full": {
+        "a1": {
+          "cases": 180,
+          "allergens_captured": 1.0,
+          "diet_captured": 1.0,
+          "unsupported_recall": 1.0,
+          "valid_json_rate": 1.0,
+          "dish_resolution": 0.9889,
+          "allergen_exact": 0.9056,
+          "diet_accuracy": 0.9889,
+          "zip_accuracy": 1.0,
+          "latency_mean_s": 2.504,
+          "latency_p95_s": 3.08
+        },
+        "a1_realistic": {
+          "cases": 41,
+          "allergens_captured": 1.0,
+          "diet_captured": 1.0,
+          "valid_json_rate": 1.0,
+          "latency_mean_s": 2.694,
+          "latency_p95_s": 3.613
+        },
+        "a2": {
+          "cases": 27,
+          "valid_profile_rate": 1.0,
+          "recall": 0.5583,
+          "core_precision": 0.6222,
+          "latency_mean_s": 16.513,
+          "latency_p95_s": 19.856
+        },
+        "a3": {
+          "cases": 30,
+          "final_clean_rate": 1.0,
+          "valid_json_rate": 1.0,
+          "repaired_rate": 0.1,
+          "verdict_safety_rate": 1.0,
+          "substitute_safety_rate": 1.0,
+          "text_safety_rate": 0.9,
+          "coverage_rate": 1.0,
+          "missing_handled_rate": 0.9184,
+          "latency_mean_s": 21.14,
+          "latency_p95_s": 33.829
+        }
+      }
+    },
+    "promoted_at": "2026-11-13T23:34:35+00:00",
+    "final_id": "20261113T233257Z-final",
+    "git_commit": "720839416cf3ff708e3e6e4e377570336e9b1265"
+  }
 }
