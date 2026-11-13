@@ -3,6 +3,7 @@
 import copy
 import json
 import shutil
+import string
 
 import pytest
 
@@ -164,6 +165,30 @@ def test_profile_for_unknown_dish(cfg):
         refine.profile_for_unknown_dish(cfg, "shakshuka", client=FakeLLM({"shakshuka": not_a_dish}))
     with pytest.raises(LLMError, match="empty"):
         refine.profile_for_unknown_dish(cfg, "   ", client=client)
+
+
+def test_profile_for_unknown_dish_takes_a_template(cfg):
+    reply = {"keep": True, "merge_into": None, "name": "shakshuka", "aliases": [],
+             "cuisine": "middle_eastern_african", "added": [],
+             "ingredients": [
+                 {"name": "eggs", "from_raw": [], "role": "core", "category": "egg"},
+                 {"name": "crushed tomatoes", "from_raw": [], "role": "core",
+                  "category": "condiment"},
+                 {"name": "bell pepper", "from_raw": [], "role": "common",
+                  "category": "produce"}]}
+    default, version = refine.load_template(cfg)
+    other = string.Template("prompt_version: unknown_dish/1\n" + default.template)
+    client = FakeLLM({"shakshuka": reply})
+    profile = refine.profile_for_unknown_dish(cfg, "shakshuka", client=client,
+                                              template=(other, "unknown_dish/1"))
+    assert client.prompts["shakshuka"][0].startswith("prompt_version: unknown_dish/1")
+    assert profile.source == "llm" and len(profile.ingredients) == 3
+    # without a template, the pipeline's own prompt, as before
+    plain = FakeLLM({"shakshuka": reply})
+    refine.profile_for_unknown_dish(cfg, "shakshuka", client=plain)
+    assert "unknown_dish/1" not in plain.prompts["shakshuka"][0]
+    assert "raw ingredients: (none)" in plain.prompts["shakshuka"][0]
+    assert version == "refine_dish/1"
 
 
 def test_missing_pool_says_what_to_run(cfg):
