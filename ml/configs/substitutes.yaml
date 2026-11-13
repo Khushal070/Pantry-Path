@@ -1,0 +1,256 @@
+# A3 substitution table: for an ingredient with no safe product, the substitutes code may
+# suggest, in order of preference. Written by hand from general cooking knowledge, by
+# food family (dairy, egg, wheat and gluten, meat, fish and shellfish, nuts, peanuts,
+# sesame, soy), not from any evaluation set's dishes. Teammates: review and extend.
+#
+# Every candidate lists what it may contain (`contains`, required, [] for nothing):
+# allergens (milk, egg, fish, shellfish, tree_nuts, peanuts, wheat, soy, sesame, gluten)
+# and diet conflicts (meat: not vegetarian; animal: an animal product, not vegan). Fish
+# and shellfish are not vegetarian; milk and egg are not vegan. Where common products
+# vary (vegan butter is often soy- or nut-based), the list is the cautious one. Audited
+# against the Open Food Facts snapshot (python -m pantrypath_ml.audit_substitutes); the
+# Nov 2026 audit added soy to seitan, wheat and gluten to tamari, milk and meat to mushroom
+# sauce, peanuts and soy to sunflower seeds, tree nuts to coconut creamer (often an almond
+# blend), soy to rice noodles (instant kits) and gluten to crushed rice cereal (barley malt).
+#
+# An ingredient matches the key that ends its name ("cheddar cheese" -> cheese, "chicken
+# broth" -> broth; plurals count), the longest first; a key inside the name doesn't
+# count ("tortilla chips" is not a tortilla). A candidate is used only if its contains
+# list and its name (the substitute screen in answer.yaml) both pass the shopper's avoid
+# list and diet; the first that passes wins, and a candidate equal to the ingredient is
+# skipped. No candidate passes: no substitute is suggested. These are suggestions, not
+# checked products: the answer always says so.
+
+substitutes:
+  # dairy
+  milk:
+    - {name: oat milk, contains: [gluten]}
+    - {name: soy milk, contains: [soy]}
+    - {name: rice milk, contains: []}
+    - {name: coconut milk, contains: []}
+    - {name: almond milk, contains: [tree_nuts]}
+  evaporated milk:
+    - {name: full-fat coconut milk, contains: []}
+    - {name: soy milk, contains: [soy]}
+    - {name: oat milk, contains: [gluten]}
+  condensed milk:
+    - {name: sweetened condensed coconut milk, contains: []}
+  buttermilk:
+    - {name: soy milk with lemon juice, contains: [soy]}
+    - {name: oat milk with lemon juice, contains: [gluten]}
+    - {name: rice milk with lemon juice, contains: []}
+  cream:
+    - {name: coconut cream, contains: []}
+    - {name: oat cream, contains: [gluten]}
+    - {name: soy cream, contains: [soy]}
+    - {name: cashew cream, contains: [tree_nuts]}
+  half-and-half:
+    - {name: oat creamer, contains: [gluten]}
+    - {name: coconut creamer, contains: [tree_nuts]}
+    - {name: soy creamer, contains: [soy]}
+  butter:
+    - {name: vegan butter, contains: [soy, tree_nuts]}
+    - {name: olive oil, contains: []}
+    - {name: vegetable oil, contains: [soy]}
+    - {name: coconut oil, contains: []}
+  ghee:
+    - {name: vegetable oil, contains: [soy]}
+    - {name: coconut oil, contains: []}
+  cheese:
+    - {name: dairy-free cheese, contains: [soy, tree_nuts]}
+    - {name: nutritional yeast, contains: []}
+  parmesan:
+    - {name: nutritional yeast, contains: []}
+    - {name: dairy-free parmesan, contains: [soy, tree_nuts]}
+  ricotta cheese:
+    - {name: dairy-free ricotta, contains: [soy, tree_nuts]}
+    - {name: crumbled firm tofu, contains: [soy]}
+  cream cheese:
+    - {name: dairy-free cream cheese, contains: [soy, tree_nuts]}
+    - {name: cashew cream cheese, contains: [tree_nuts]}
+  sour cream:
+    - {name: dairy-free sour cream, contains: [soy, tree_nuts]}
+    - {name: coconut yogurt, contains: []}
+    - {name: soy yogurt, contains: [soy]}
+  yogurt:
+    - {name: coconut yogurt, contains: []}
+    - {name: soy yogurt, contains: [soy]}
+    - {name: oat yogurt, contains: [gluten]}
+  cream of chicken soup:
+    - {name: dairy-free cream of mushroom soup, contains: [wheat, gluten, soy]}
+  cream of mushroom soup:
+    - {name: dairy-free cream of mushroom soup, contains: [wheat, gluten, soy]}
+  # egg
+  egg:
+    - {name: flax egg, contains: []}
+    - {name: chia egg, contains: []}
+    - {name: aquafaba, contains: []}
+  mayonnaise:
+    - {name: egg-free mayo, contains: [soy]}
+    - {name: vegan mayonnaise, contains: [soy]}
+  mayo:
+    - {name: egg-free mayo, contains: [soy]}
+    - {name: vegan mayonnaise, contains: [soy]}
+  # wheat and gluten
+  flour:
+    - {name: gluten-free all-purpose flour, contains: []}
+    - {name: rice flour, contains: []}
+    - {name: oat flour, contains: [gluten]}
+  bread:
+    - {name: gluten-free bread, contains: [egg, milk, soy]}
+  bread crumb:
+    - {name: gluten-free breadcrumbs, contains: [egg, milk, soy]}
+    - {name: crushed rice cereal, contains: [gluten]}
+  breadcrumb:
+    - {name: gluten-free breadcrumbs, contains: [egg, milk, soy]}
+    - {name: crushed rice cereal, contains: [gluten]}
+  pasta:
+    - {name: gluten-free pasta, contains: [egg]}
+    - {name: rice noodles, contains: [soy]}
+    - {name: chickpea pasta, contains: []}
+  spaghetti:
+    - {name: gluten-free spaghetti, contains: [egg]}
+    - {name: rice noodles, contains: [soy]}
+  linguine:
+    - {name: gluten-free pasta, contains: [egg]}
+    - {name: rice noodles, contains: [soy]}
+  noodle:
+    - {name: rice noodles, contains: [soy]}
+    - {name: gluten-free pasta, contains: [egg]}
+  couscous:
+    - {name: quinoa, contains: []}
+    - {name: rice, contains: []}
+  tortilla:
+    - {name: corn tortillas, contains: []}
+    - {name: gluten-free tortillas, contains: []}
+  bun:
+    - {name: gluten-free buns, contains: [egg, milk, soy]}
+    - {name: lettuce leaves, contains: []}
+  pie crust:
+    - {name: gluten-free pie crust, contains: [egg, milk]}
+  oats:
+    - {name: quinoa flakes, contains: []}
+    - {name: rice flakes, contains: []}
+  soy sauce:
+    - {name: tamari, contains: [soy, wheat, gluten]}
+    - {name: coconut aminos, contains: []}
+  # meat (vegetarian, vegan)
+  chicken:
+    - {name: extra-firm tofu, contains: [soy]}
+    - {name: seitan, contains: [wheat, gluten, soy]}
+    - {name: chickpeas, contains: []}
+  chicken breast:
+    - {name: extra-firm tofu, contains: [soy]}
+    - {name: seitan, contains: [wheat, gluten, soy]}
+    - {name: chickpeas, contains: []}
+  beef:
+    - {name: lentils, contains: []}
+    - {name: mushrooms, contains: []}
+    - {name: plant-based ground meat, contains: [soy, wheat, gluten]}
+  ground beef:
+    - {name: lentils, contains: []}
+    - {name: plant-based ground meat, contains: [soy, wheat, gluten]}
+    - {name: mushrooms, contains: []}
+  steak:
+    - {name: portobello mushrooms, contains: []}
+  roast:
+    - {name: portobello mushrooms, contains: []}
+    - {name: jackfruit, contains: []}
+  pork:
+    - {name: jackfruit, contains: []}
+    - {name: mushrooms, contains: []}
+  rib:
+    - {name: jackfruit, contains: []}
+    - {name: portobello mushrooms, contains: []}
+  pork and beans:
+    - {name: vegetarian baked beans, contains: []}
+  bacon:
+    - {name: smoked mushrooms, contains: []}
+    - {name: smoked paprika, contains: []}
+  pancetta:
+    - {name: smoked mushrooms, contains: []}
+    - {name: smoked paprika, contains: []}
+  ham:
+    - {name: smoked tofu, contains: [soy]}
+    - {name: smoked mushrooms, contains: []}
+  sausage:
+    - {name: vegetarian sausage, contains: [soy, wheat, gluten, egg, milk]}
+    - {name: seasoned mushrooms, contains: []}
+  broth:
+    - {name: vegetable broth, contains: []}
+    - {name: mushroom broth, contains: []}
+  stock:
+    - {name: vegetable stock, contains: []}
+    - {name: mushroom stock, contains: []}
+  bouillon:
+    - {name: vegetable bouillon, contains: [wheat, gluten, soy]}
+  bouillon cube:
+    - {name: vegetable bouillon cubes, contains: [wheat, gluten, soy]}
+  worcestershire sauce:
+    - {name: vegan worcestershire sauce, contains: [soy, wheat, gluten]}
+  gelatin:
+    - {name: agar, contains: []}
+  honey:
+    - {name: maple syrup, contains: []}
+    - {name: agave syrup, contains: []}
+  # fish and shellfish
+  fish sauce:
+    - {name: soy sauce, contains: [soy, wheat, gluten]}
+    - {name: coconut aminos, contains: []}
+  oyster sauce:
+    - {name: vegetarian oyster sauce, contains: [soy, wheat, gluten]}
+    - {name: mushroom sauce, contains: [soy, wheat, gluten, milk, meat]}
+  anchovy:
+    - {name: capers, contains: []}
+    - {name: miso paste, contains: [soy]}
+  anchovy fillet:
+    - {name: capers, contains: []}
+    - {name: miso paste, contains: [soy]}
+  anchovy paste:
+    - {name: capers, contains: []}
+    - {name: miso paste, contains: [soy]}
+  tuna:
+    - {name: mashed chickpeas, contains: []}
+  salmon:
+    - {name: marinated tofu, contains: [soy]}
+    - {name: mashed chickpeas, contains: []}
+  crab:
+    - {name: hearts of palm, contains: []}
+  shrimp:
+    - {name: hearts of palm, contains: []}
+    - {name: extra-firm tofu, contains: [soy]}
+  # nuts, peanuts, sesame, soy
+  peanut butter:
+    - {name: sunflower seed butter, contains: []}
+    - {name: tahini, contains: [sesame]}
+  peanut:
+    - {name: roasted sunflower seeds, contains: [peanuts, soy]}
+    - {name: roasted chickpeas, contains: []}
+  almond:
+    - {name: sunflower seeds, contains: [peanuts, soy]}
+    - {name: pumpkin seeds, contains: []}
+  cashew:
+    - {name: sunflower seeds, contains: [peanuts, soy]}
+    - {name: pumpkin seeds, contains: []}
+  pecan:
+    - {name: sunflower seeds, contains: [peanuts, soy]}
+    - {name: pumpkin seeds, contains: []}
+  walnut:
+    - {name: sunflower seeds, contains: [peanuts, soy]}
+    - {name: pumpkin seeds, contains: []}
+  pine nut:
+    - {name: sunflower seeds, contains: [peanuts, soy]}
+  tahini:
+    - {name: sunflower seed butter, contains: []}
+  sesame seed:
+    - {name: poppy seeds, contains: []}
+    - {name: hemp seeds, contains: []}
+  sesame oil:
+    - {name: vegetable oil, contains: [soy]}
+    - {name: olive oil, contains: []}
+  tofu:
+    - {name: chickpeas, contains: []}
+  edamame:
+    - {name: green peas, contains: []}
+  miso:
+    - {name: salt, contains: []}

@@ -1,0 +1,77 @@
+# A3 grounded answer: result.json (+ A1 extras) -> the answer the shopper reads.
+# A hybrid: code decides each ingredient's status, product, store and substitute (from
+# substitutes_file, screened below); the model writes only the summary, steps and
+# quantities around them. Nobody sets a verdict. A deterministic check then holds the
+# whole answer to result.json (answer.py) and repairs whatever breaks a rule before anyone
+# sees it.
+
+# Prompt variants: hybrid (answer/2, the default), hybrid_swaps (answer/3: the hybrid
+# plus an explicit "use X instead of Y" list and the rule to write the substitute's name,
+# never the original's) and model_list (answer/1, the first version: the model writes the
+# whole list; kept so its dev run stays reproducible). Every A3 report records the variant
+# (params.prompt_variant).
+variants:
+  hybrid: {prompt_file: prompts/answer.txt, mode: hybrid}
+  hybrid_swaps: {prompt_file: prompts/answer_swaps.txt, mode: hybrid}
+  model_list: {prompt_file: prompts/answer_model_list.txt, mode: model_list}
+default_variant: hybrid
+substitutes_file: configs/substitutes.yaml
+
+# The A3 setting when registry/proposed.json has none. Not searched this milestone:
+# temperature 0 like the chosen A1 and A2 settings (no other value was tried), thinking
+# off. select choose copies these into proposed.json.
+defaults: {temperature: 0, think: false}
+
+default_servings: 4
+safe_products_shown: 2          # model_list only: safe products per ingredient in the prompt
+
+# Substitute screen. diet_rules judges products (label evidence), not ingredient names,
+# so a suggested substitute gets this word check against the avoid list and diet instead:
+# the allergen words from parse_request.yaml cross_check, plus extra_words below.
+substitute_check:
+  # "coconut milk", "flax egg", "rice flour": a modifier before one of `modified` makes it
+  # a different food, so only the modifier is checked ("almond milk" -> almond -> tree_nuts)
+  modifiers: [coconut, oat, rice, soy, almond, cashew, hemp, pea, vegan, plant-based,
+              plant based, dairy-free, dairy free, non-dairy, flax, chia, gluten-free,
+              gluten free, chickpea, buckwheat, tapioca, corn, cassava, potato, sorghum,
+              seed, sunflower]
+  modified: [milk, cream, butter, cheese, yogurt, yoghurt, egg, mayo, mayonnaise, flour,
+             pasta, bread, noodle, breadcrumb, sour cream, cream cheese, soy sauce,
+             pie crust, crust, tortilla, bun, wrap]
+  # "vegetarian sausage", "plant-based ground meat": a meat or fish word after one of
+  # these is a meat-free product, so only the modifier is checked
+  analog_modifiers: [vegetarian, vegan, plant-based, plant based, meatless, meat-free,
+                     meat free, veggie]
+  # words allowed between a modifier and its food: "gluten-free all-purpose flour",
+  # "plant-based ground meat"
+  descriptors: [all-purpose, all purpose, self-rising, self rising, plain, whole, unsalted,
+                salted, sweetened, unsweetened, shredded, grated, sliced, ground, smoked,
+                breakfast, italian-style, italian style, block]
+  # "gluten-free", "dairy free": a word followed by free names what is absent, so the
+  # pair is dropped before the check
+  extra_words:
+    wheat: [flour, breadcrumb, bread crumb, panko, semolina, couscous, pasta, bread,
+            soy sauce, seitan, noodle]
+    gluten: [flour, breadcrumb, bread crumb, panko, semolina, couscous, barley, rye, pasta,
+             bread, soy sauce, seitan, oat, noodle]
+    soy: [tofu, tempeh, edamame, miso]
+    sesame: [tahini]
+  diet_conflicts:
+    vegetarian: [meat, beef, pork, chicken, turkey, lamb, veal, duck, bacon, ham, sausage,
+                 pepperoni, prosciutto, chorizo, salami, lard, gelatin, fish, anchovy,
+                 salmon, tuna, cod, shrimp, prawn, crab, lobster, clam, oyster, mussel,
+                 scallop, fish sauce, oyster sauce, worcestershire, broth, stock]
+    vegan: [honey, milk, butter, cheese, cream, yogurt, yoghurt, ghee, whey, casein,
+            buttermilk, egg, mayo, mayonnaise]  # on top of the vegetarian words
+  # broth and stock count as meat for vegetarians unless named vegetable stock
+  diet_allow: [vegetable broth, vegetable stock, veggie broth, veggie stock,
+               mushroom broth, mushroom stock, vegan worcestershire]
+
+# Added by code, never left to the model
+warnings:
+  unknown: "Some products had no full ingredient list to check, so they are marked couldn't verify: treat them as not safe until you read the label."
+  quantities: "Quantities are estimates for {servings} servings; the store data has none."
+  substitutes: "Substitutes are suggestions, not checked products: pick one marked safe or read its label."
+  unsupported: "We can't check {label} in this version: please confirm it yourself."
+  clarify: "You mentioned nuts: we avoided tree nuts. Tell us if peanuts should be avoided too."
+  off_attribution: "Product data: Open Food Facts (openfoodfacts.org)"
