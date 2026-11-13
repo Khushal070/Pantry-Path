@@ -1,0 +1,306 @@
+{
+  "final_id": "20261113T233257Z-final",
+  "kind": "full",
+  "splits": {
+    "a1": "test",
+    "a1_realistic": "realistic",
+    "a2": "test",
+    "a3": "test",
+    "a2_bias": "loo_full"
+  },
+  "setting": {
+    "candidate": "qwen3-4b",
+    "quantization": "4bit",
+    "a1": {
+      "prompt_variant": "rules_v2",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261111T225007Z-a1-a7af2c"
+    },
+    "a2": {
+      "prompt_variant": "refine_dish_unknown",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261111T222859Z-a2-ef04d0",
+      "bias_run": "20261112T223331Z-a2-6f49bb",
+      "final_bias_run": "20261112T004423Z-a2-181930"
+    },
+    "a3": {
+      "prompt_variant": "hybrid_swaps",
+      "temperature": 0.0,
+      "think": false,
+      "dev_run": "20261113T024012Z-a3-12165d"
+    }
+  },
+  "params_b": 4.0,
+  "models": {
+    "ollama": "qwen3:4b-q4_K_M",
+    "vllm": "Qwen/Qwen3-4B-AWQ"
+  },
+  "prompt_versions": {
+    "a1": "parse_request/1+rules_v2",
+    "a2": "refine_dish_unknown/1",
+    "a3": "answer/3"
+  },
+  "metrics": {
+    "a1": {
+      "cases": 180,
+      "allergens_captured": 1.0,
+      "diet_captured": 1.0,
+      "unsupported_recall": 1.0,
+      "valid_json_rate": 1.0,
+      "dish_resolution": 0.9889,
+      "allergen_exact": 0.9056,
+      "diet_accuracy": 0.9889,
+      "zip_accuracy": 1.0,
+      "latency_mean_s": 2.504,
+      "latency_p95_s": 3.08
+    },
+    "a1_realistic": {
+      "cases": 41,
+      "allergens_captured": 1.0,
+      "diet_captured": 1.0,
+      "valid_json_rate": 1.0,
+      "latency_mean_s": 2.694,
+      "latency_p95_s": 3.613
+    },
+    "a2": {
+      "cases": 27,
+      "valid_profile_rate": 1.0,
+      "recall": 0.5583,
+      "core_precision": 0.6222,
+      "latency_mean_s": 16.513,
+      "latency_p95_s": 19.856
+    },
+    "a3": {
+      "cases": 30,
+      "final_clean_rate": 1.0,
+      "valid_json_rate": 1.0,
+      "repaired_rate": 0.1,
+      "verdict_safety_rate": 1.0,
+      "substitute_safety_rate": 1.0,
+      "text_safety_rate": 0.9,
+      "coverage_rate": 1.0,
+      "missing_handled_rate": 0.9184,
+      "latency_mean_s": 21.14,
+      "latency_p95_s": 33.829
+    }
+  },
+  "gates": {
+    "a1": {
+      "passed": true,
+      "hard": {
+        "allergens_captured": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "diet_captured": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "unsupported_recall": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "valid_json_rate": {
+          "value": 1.0,
+          "min": 0.99,
+          "passed": true
+        }
+      },
+      "bias": {
+        "gap": 0.0,
+        "max": 0.1,
+        "status": "passed",
+        "passed": true,
+        "blocking": true
+      },
+      "goals": {
+        "allergens_captured": {
+          "value": 1.0,
+          "target": 1.0,
+          "met": true
+        },
+        "diet_captured": {
+          "value": 1.0,
+          "target": 1.0,
+          "met": true
+        },
+        "unsupported_recall": {
+          "value": 1.0,
+          "target": 1.0,
+          "met": true
+        },
+        "dish_resolution": {
+          "value": 0.9889,
+          "target": 0.95,
+          "met": true
+        },
+        "valid_json_rate": {
+          "value": 1.0,
+          "target": 0.99,
+          "met": true
+        }
+      },
+      "failures": [],
+      "warnings": []
+    },
+    "a2": {
+      "passed": true,
+      "hard": {
+        "valid_profile_rate": {
+          "value": 1.0,
+          "min": 0.99,
+          "passed": true
+        }
+      },
+      "bias": {
+        "gap": 0.1345,
+        "max": 0.1,
+        "status": "failed",
+        "passed": false,
+        "blocking": false
+      },
+      "goals": {
+        "valid_profile_rate": {
+          "value": 1.0,
+          "target": 0.99,
+          "met": true
+        },
+        "recall": {
+          "value": 0.5583,
+          "target": 0.75,
+          "met": false
+        },
+        "core_precision": {
+          "value": 0.6222,
+          "target": 0.85,
+          "met": false
+        }
+      },
+      "failures": [],
+      "warnings": [
+        "bias gap 0.1345 > 0.1. Reported, not blocking: the A2 cuisine groups are small (golden dev: at most 5 dishes per cuisine; search leave-one-out, without the golden test dishes: 48 american, 7 or fewer for every other cuisine; the full leave-one-out in select final: 60 american, 10 or fewer for every other cuisine), and the leave-one-out references are catalog entries written by an LLM, not ground truth, so a gap there is a consistency signal, not a measured error rate."
+      ]
+    },
+    "a1_realistic": {
+      "passed": true,
+      "hard": {
+        "allergens_captured": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "diet_captured": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "valid_json_rate": {
+          "value": 1.0,
+          "min": 0.97,
+          "passed": true
+        }
+      },
+      "bias": {
+        "gap": null,
+        "max": 0.1,
+        "status": "not_gated",
+        "passed": true,
+        "blocking": false
+      },
+      "goals": {
+        "allergens_captured": {
+          "value": 1.0,
+          "target": 1.0,
+          "met": true
+        },
+        "diet_captured": {
+          "value": 1.0,
+          "target": 1.0,
+          "met": true
+        }
+      },
+      "failures": [],
+      "warnings": []
+    },
+    "a3": {
+      "passed": true,
+      "hard": {
+        "final_clean_rate": {
+          "value": 1.0,
+          "min": 1.0,
+          "passed": true
+        },
+        "valid_json_rate": {
+          "value": 1.0,
+          "min": 0.95,
+          "passed": true
+        },
+        "repaired_rate": {
+          "value": 0.1,
+          "max": 0.5,
+          "passed": true
+        }
+      },
+      "bias": {
+        "gap": null,
+        "max": 0.1,
+        "status": "not_gated",
+        "passed": true,
+        "blocking": false
+      },
+      "goals": {
+        "verdict_safety_rate": {
+          "value": 1.0,
+          "target": 0.95,
+          "met": true
+        },
+        "substitute_safety_rate": {
+          "value": 1.0,
+          "target": 0.9,
+          "met": true
+        },
+        "text_safety_rate": {
+          "value": 0.9,
+          "target": 0.9,
+          "met": true
+        },
+        "coverage_rate": {
+          "value": 1.0,
+          "target": 0.9,
+          "met": true
+        },
+        "missing_handled_rate": {
+          "value": 0.9184,
+          "target": 0.9,
+          "met": true
+        }
+      },
+      "failures": [],
+      "warnings": []
+    }
+  },
+  "passed": true,
+  "runs": {
+    "a1": "20261113T044153Z-final-a1",
+    "a1_realistic": "20261113T044153Z-final-a1-realistic",
+    "a2": "20261113T003401Z-final-a2",
+    "a3": "20261113T033644Z-final-a3",
+    "a2_bias": "20261112T004423Z-a2-181930"
+  },
+  "git_commit": "720839416cf3ff708e3e6e4e377570336e9b1265",
+  "reused": {
+    "from_final": "20261113T044153Z-final",
+    "tasks": [
+      "a1",
+      "a1_realistic",
+      "a2",
+      "a3"
+    ],
+    "git_commit": "76ed16d8b6f55c8b2630d852dc7e5032fa3701a3"
+  }
+}
