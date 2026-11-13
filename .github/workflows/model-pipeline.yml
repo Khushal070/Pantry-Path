@@ -1,8 +1,14 @@
 name: Model pipeline
 
-# Unit tests -> small held-out A1/A2 evaluation on the runner's CPU (Ollama) -> validation
-# and bias gates -> champion comparison -> on main only: push to Artifact Registry and
-# deploy a new Cloud Run revision. Notifications on failure, failed gates and completion.
+# Unit tests -> small A1/A2 evaluation on a seeded DEV sample on the runner's CPU (Ollama)
+# -> validation and bias gates -> champion comparison against the committed full final
+# report -> on main only: push to Artifact Registry, deploy a new Cloud Run revision,
+# smoke-test it and roll back automatically if it fails. Notifications on failure, failed
+# gates and completion.
+#
+# CI never reads the held-out test or realistic splits (running them on every push would
+# make them tuning data). The held-out numbers come from `select final`, run once by hand;
+# commit its reports/final/<id>/ folder, and CI promotes only a setting that has one.
 #
 # Configure in the repository settings (nothing project-specific is stored here):
 #   variables: GCP_PROJECT_ID, GCP_REGION, AR_DOCKER_REPO, AR_GENERIC_REPO,
@@ -21,19 +27,34 @@ on:
     paths:
       - "ml/**"
       - ".github/workflows/model-pipeline.yml"
+      # A2 reuses the data pipeline's prompt, schema and code; A1 validates against
+      # pantrypath_core: a change there can change the model's results
+      - "shared/**"
+      - "data-pipeline/src/**"
+      - "data-pipeline/prompts/**"
+      - "data-pipeline/config/**"
+      - "data-pipeline/requirements*"
+      - "data/golden/**"
   pull_request:
     branches:
       - main
     paths:
       - "ml/**"
       - ".github/workflows/model-pipeline.yml"
+      # same list as above
+      - "shared/**"
+      - "data-pipeline/src/**"
+      - "data-pipeline/prompts/**"
+      - "data-pipeline/config/**"
+      - "data-pipeline/requirements*"
+      - "data/golden/**"
 
 permissions:
   contents: read
   id-token: write   # workload identity federation for GCP
 
 env:
-  OLLAMA_VERSION: "0.40.11"
+  OLLAMA_VERSION: "0.40.15"
   MLFLOW_DISABLE_AGENT_HINT: "1"
 
 jobs:
@@ -86,6 +107,13 @@ jobs:
         run: |
           dvc pull data-pipeline/data/processed/dish_profiles.json.dvc \
             data-pipeline/data/processed/pantrypath.sqlite.dvc
+      # Deterministic from the catalog; fails if the committed A3 sets are out of date
+      - name: A3 evaluation sets
+        run: |
+          python -m pantrypath_ml.evalsets generate-a3
+          # also fails when the sets were never committed (git diff ignores untracked files)
+          changed="$(git status --porcelain -- evalsets/a3_dev.jsonl evalsets/a3_test.jsonl)"
+          if [ -n "$changed" ]; then echo "$changed"; echo "Commit the regenerated A3 sets"; exit 1; fi
       - name: Model id of the proposed setting
         id: model
         run: |
@@ -107,8 +135,8 @@ jobs:
           OLLAMA_CONTEXT_LENGTH=8192 nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
           for _ in $(seq 1 60); do curl -sf http://127.0.0.1:11434/api/version && break; sleep 2; done
           ollama pull "${{ steps.model.outputs.id }}"
-      # The proposed setting on a small slice of the A1 and A2 TEST sets, then the gates
-      - name: Held-out evaluation and gates
+      # The proposed setting on a seeded sample of the A1, A2 and A3 DEV sets, then the gates
+      - name: CI evaluation and gates
         id: gate
         run: |
           set +e
@@ -133,11 +161,12 @@ jobs:
           AR_DOCKER_REPO: ${{ vars.AR_DOCKER_REPO }}
           AR_GENERIC_REPO: ${{ vars.AR_GENERIC_REPO }}
         run: python -m pantrypath_ml.registry pull-champion
+      # Promotion uses the committed full final report (held-out numbers) for the proposed
+      # setting, never the small CI sample
       - name: Compare with the champion
         id: champion
         run: |
-          python -m pantrypath_ml.select promote --final "${{ steps.gate.outputs.final }}/final.json" \
-            | tee "$RUNNER_TEMP/promote.json"
+          python -m pantrypath_ml.select promote --latest-full | tee "$RUNNER_TEMP/promote.json"
           python -c "import json,sys; d=json.load(open(sys.argv[1])); print('promoted=' + str(d['promoted']).lower())" \
             "$RUNNER_TEMP/promote.json" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
@@ -190,9 +219,32 @@ jobs:
       - name: Push the champion record
         run: python -m pantrypath_ml.registry push-champion
       - name: Deploy a new Cloud Run revision (the previous one stays for rollback)
+        id: deploy
         env:
           IMAGE: ${{ steps.image.outputs.uri }}
-        run: bash serving/deploy.sh
+        run: |
+          url="$(bash serving/deploy.sh | tail -n 1)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      # An ID token for the private service (the CI service account needs run.invoker)
+      - name: Token for the deployed service
+        id: token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.deploy.outputs.url }}
+          id_token_include_email: true
+      # Valid replies from the new revision; latency is reported, not gated (see README)
+      - name: Smoke test the new revision
+        id: smoke
+        env:
+          MODEL_SERVER_URL: ${{ steps.deploy.outputs.url }}
+          MODEL_SERVER_TOKEN: ${{ steps.token.outputs.id_token }}
+        run: python serving/latency_check.py --smoke | tee "$RUNNER_TEMP/smoke.json"
+      - name: Roll back after a failed smoke test
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: bash serving/rollback.sh
 
   notify:
     needs: [test, evaluate, release]

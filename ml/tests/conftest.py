@@ -64,7 +64,8 @@ GOLDEN_TEST = [{"dish": "Hummus", "ingredients": [{"name": "chickpeas"}, {"name"
 @pytest.fixture(autouse=True)
 def _isolated(tmp_path, monkeypatch):
     """No .env, no overrides, and every ml/ path inside a temp folder."""
-    for name in ("MODEL_SERVER_URL", "MODEL_NAME", "MODEL_SERVER_TOKEN", "MLFLOW_TRACKING_URI",
+    for name in ("MODEL_SERVER_URL", "MODEL_NAME", "MODEL_SERVER_TOKEN", "MODEL_SERVER_AUTH",
+                 "MLFLOW_TRACKING_URI",
                  "LLM_API_KEY", "LLM_PROVIDER", "LLM_MODEL", "ALERT_EMAIL_TO", "ALERT_SMTP_USER",
                  "ALERT_SMTP_PASSWORD", "SLACK_WEBHOOK_URL", "GCP_PROJECT_ID", "GCP_REGION",
                  "AR_DOCKER_REPO", "AR_GENERIC_REPO", "PANTRYPATH_CONFIG"):
