@@ -22,8 +22,7 @@ def test_golden_dev_cases_use_the_pipeline_mapping_and_slices(pcfg):
 def test_test_split_is_never_read_unless_asked(pcfg, monkeypatch):
     read = []
     monkeypatch.setattr(evalsets, "read_recipes", lambda p: read.append(p) or [])
-    for split in ("dev", "loo"):
-        a2_cases(pcfg, config.load("evalsets"), split)
+    a2_cases(pcfg, config.load("evalsets"), "dev")
     with pytest.raises(HeldOutError):
         a2_cases(pcfg, config.load("evalsets"), "test")
     assert all("golden_test" not in str(p) for p in read)
@@ -33,9 +32,29 @@ def test_test_split_is_never_read_unless_asked(pcfg, monkeypatch):
 
 def test_leave_one_out_uses_core_as_required(pcfg):
     cases = a2_cases(pcfg, config.load("evalsets"), "loo")
-    assert len(cases) == 6
-    hummus = next(c for c in cases if c["case_id"] == "hummus")
-    assert [i["optional"] for i in hummus["reference"]["ingredients"]] == [False, True, True]
+    lasagna = next(c for c in cases if c["case_id"] == "lasagna")
+    assert [i["optional"] for i in lasagna["reference"]["ingredients"]][0] is False
+    assert all(i["optional"] for i in lasagna["reference"]["ingredients"][1:])
+
+
+def test_leave_one_out_never_asks_a_golden_test_dish(pcfg):
+    from conftest import CATALOG
+
+    cases = a2_cases(pcfg, config.load("evalsets"), "loo")
+    held_out = evalsets.golden_test_dish_ids(pcfg, CATALOG)
+    assert held_out == {"hummus"}  # the fake golden test set: one recipe, Hummus
+    assert len(cases) == len(CATALOG) - 1
+    assert not {c["dish_id"] for c in cases} & held_out
+    assert not {c["name"].lower() for c in cases} & {"hummus"}
+
+
+def test_full_leave_one_out_asks_every_dish_and_is_held_out(pcfg):
+    from conftest import CATALOG
+
+    with pytest.raises(HeldOutError):
+        a2_cases(pcfg, config.load("evalsets"), "loo_full")
+    cases = a2_cases(pcfg, config.load("evalsets"), "loo_full", allow_test=True)
+    assert len(cases) == len(CATALOG) and "hummus" in {c["dish_id"] for c in cases}
 
 
 def test_popularity_tiers_are_even():
@@ -96,11 +115,14 @@ def test_refine_dish_unknown_variant(pcfg, fake_server):
     assert profile["source"] == "llm" and all(i["added_by_llm"] for i in profile["ingredients"])
 
 
-def test_default_variant_is_the_pipeline_prompt(pcfg, fake_server):
-    fake_server(answer)
+def test_default_variant_is_refine_dish_unknown(pcfg, fake_server):
+    fake_server(lambda prompt: unknown_reply(dish_name(prompt), ["rice noodles", "tofu", "egg"]))
     summary = evaluate_a2.run("qwen3-4b", "dev", use_mlflow=False, run_id="r5")
+    assert summary["params"]["prompt_variant"] == "refine_dish_unknown"
+    fake_server(answer)
+    summary = evaluate_a2.run("qwen3-4b", "dev", variant="refine_dish", use_mlflow=False,
+                              run_id="r6")
     assert summary["params"]["prompt_version"] == "refine_dish/1"
-    assert summary["params"]["prompt_variant"] == "refine_dish"
     with pytest.raises(PipelineError, match="Unknown A2 prompt variant"):
         evaluate_a2.run("qwen3-4b", "dev", variant="nope", use_mlflow=False)
 
@@ -134,3 +156,18 @@ def test_run_logs_to_mlflow_with_tags(pcfg, fake_server):
     assert run.data.tags["eval_split"] == "dev" and run.data.tags["grid"] == "local"
     assert run.data.metrics["recall"] == summary["recall"]
     assert run.data.params["think"] == "False"
+
+
+def test_rescore_uses_the_current_matcher_without_the_model(pcfg, fake_server):
+    fake_server(answer)
+    before = evaluate_a2.run("qwen3-4b", "dev", variant="refine_dish", use_mlflow=False,
+                             run_id="rs")
+    folder = config.REPORTS / "a2" / "rs"
+    fake_server(lambda prompt: pytest.fail("rescoring must not call the model"))
+    pcfg.data["catalog_eval"]["synonyms"].append(["ricotta cheese", "mozzarella"])
+    after = evaluate_a2.rescore(folder, pcfg)
+    assert after["recall"] > before["recall"] and after["rescored"]["synonym_groups"] >= 1
+    assert after["params"] == before["params"] and after["run_id"] == "rs"
+    saved = json.loads((folder / "summary.before-rescore.json").read_text())
+    assert saved["recall"] == before["recall"]
+    assert json.loads((folder / "summary.json").read_text())["recall"] == after["recall"]

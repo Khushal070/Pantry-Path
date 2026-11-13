@@ -4,7 +4,7 @@ import csv
 import json
 
 import pytest
-from conftest import CATALOG
+from conftest import CATALOG, ML_HOME
 
 from pantrypath_ml import config, evaluate_a1
 from pantrypath_ml.evalsets import (
@@ -125,6 +125,70 @@ def test_extra_allergens_precision_and_flags():
     assert exact["false_confirmation"]
 
 
+def test_a_justified_zip_confirmation_is_not_false():
+    wrong_zip = result(["milk"], status="needs_confirmation")
+    wrong_zip["fields"]["zip"] = "99999"
+    assert not evaluate_a1.score_case(case(["milk"]), wrong_zip, "pad-thai")["false_confirmation"]
+    right = result(["milk"], status="needs_confirmation")
+    assert evaluate_a1.score_case(case(["milk"]), right, "pad-thai")["false_confirmation"]
+
+
+def test_a_nuts_question_is_reported_apart_from_false_confirmations():
+    nuts = {**result(["tree_nuts"], status="needs_confirmation"), "clarify": ["peanuts"],
+            "conflicts": ["the chat mentions nuts, which can mean tree nuts or peanuts: "
+                          "the suggested fix avoids both"]}
+    score = evaluate_a1.score_case(case(["tree_nuts"]), nuts, "pad-thai")
+    assert score["ambiguous_confirmation"] and not score["false_confirmation"]
+    # with another conflict as well, the confirmation is judged as usual
+    both = {**nuts, "conflicts": [*nuts["conflicts"], "another conflict"]}
+    score = evaluate_a1.score_case(case(["tree_nuts"]), both, "pad-thai")
+    assert score["false_confirmation"] and not score["ambiguous_confirmation"]
+    records = [{"result": nuts, "score": evaluate_a1.score_case(case(["tree_nuts"]), nuts,
+                                                                "pad-thai"),
+                "calls": 1, "latency_s": 1.0}]
+    summary = evaluate_a1.summarize(records, with_slices=False)
+    assert (summary["false_confirmation_rate"], summary["ambiguous_confirmation_rate"]) \
+        == (0.0, 1.0)
+
+
+def test_realistic_split_is_held_out_and_well_labelled():
+    ecfg = config.load("evalsets")
+    with pytest.raises(HeldOutError):
+        load_a1(ecfg, "realistic")
+    rows = [json.loads(line) for line in
+            (ML_HOME / "evalsets" / "a1_realistic.jsonl").read_text().splitlines()]
+    dev_dishes = {json.loads(line)["dish_id"] for line in
+                  (ML_HOME / "evalsets" / "a1_dev.jsonl").read_text().splitlines()}
+    allergens = set(CrossCheck(config.load("parse_request")["cross_check"]).category)
+    labels = set(config.load("parse_request")["unsupported_labels"])
+    assert len(rows) >= 40 and len({r["case_id"] for r in rows}) == len(rows)
+    for r in rows:
+        e, text = r["expected"], " ".join(m["content"] for m in r["messages"])
+        assert r["split"] == "realistic" and r["dish_id"] in dev_dishes  # no test dishes
+        assert e["zip"] is None or e["zip"] in text
+        assert set(e["avoid"]) <= allergens and set(e["unsupported"]) <= labels
+        assert e["diet"] in ("none", "vegetarian", "vegan")
+    # the four paraphrases of the cross-check fixes are left out of the metrics and gate
+    excluded = set(ecfg["a1"]["realistic_excluded"])
+    assert len(excluded) == 4 and excluded <= {r["case_id"] for r in rows}
+    target = config.ML_HOME / "evalsets" / "a1_realistic.jsonl"  # the test's temp home
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text((ML_HOME / "evalsets" / "a1_realistic.jsonl").read_text())
+    loaded = load_a1(ecfg, "realistic", allow_test=True)
+    assert len(loaded) == len(rows) - 4 and not excluded & {c["case_id"] for c in loaded}
+
+
+def test_limit_samples_across_styles():
+    from pantrypath_ml.reporting import sample
+
+    items = [{"id": i, "style": "abc"[i % 3] if i < 9 else "a"} for i in range(20)]
+    picked = sample(items, 6, key=lambda c: c["style"])
+    assert len(picked) == 6 and {c["style"] for c in picked} == {"a", "b", "c"}
+    assert [c["id"] for c in picked] == sorted(c["id"] for c in picked)  # original order
+    assert picked == sample(items, 6, key=lambda c: c["style"])  # seeded
+    assert sample(items, None, key=lambda c: c["style"]) == items
+
+
 def test_invalid_reply_misses_everything():
     score = evaluate_a1.score_case(case(["milk"]), {
         "status": "invalid", "fields": None, "extras": {}, "model_unsupported": [],
@@ -166,4 +230,49 @@ def test_run_end_to_end_with_a_fake_model(pcfg, fake_server):
     assert summary["cases"] == 10 and summary["valid_json_rate"] == 1.0
     assert summary["needs_confirmation_rate"] == 0.0
     saved = json.loads((config.REPORTS / "a1" / "a1run" / "summary.json").read_text())
-    assert saved["params"]["prompt_version"] == "parse_request/1+base"
+    assert saved["params"]["prompt_version"] == "parse_request/1+rules_v2"  # the default
+
+
+def test_the_draft_csv_becomes_a_dev_split(pcfg, tmp_path):
+    from pantrypath_ml.evalsets import convert_a1_csv, held_out_dish_ids
+
+    ecfg = config.load("evalsets")
+    test_ids = held_out_dish_ids(CATALOG, ecfg["a1"]["seed"], ecfg["a1"]["test_fraction"])
+    dev_name = next(d["name"] for d in CATALOG if d["dish_id"] not in test_ids)
+    test_name = next(d["name"] for d in CATALOG if d["dish_id"] in test_ids)
+    path = tmp_path / "draft.csv"
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "message_1", "message_2", "dish", "zip", "avoid", "diet",
+                    "unsupported"])
+        w.writerow(["ind-01", f"{dev_name} near 02115, no soy or milk", "and keep it kosher",
+                    dev_name, "02115", "soy;milk", "none", "kosher"])
+        w.writerow(["ind-02", f"{test_name} please", "", test_name, "", "", "none", ""])
+        w.writerow(["ind-03", "mystery stew 02115", "", "mystery stew", "02115", "", "none", ""])
+        w.writerow(["ind-04", f"{dev_name}, low sodium", "", dev_name, "", "", "vegan",
+                    "low sodium"])
+    out = convert_a1_csv(pcfg, ecfg, path)
+    assert out["cases"] == 2 and [u["id"] for u in out["unresolved"]] == ["ind-03"]
+    assert [t["id"] for t in out["test_dishes_left_out"]] == ["ind-02"]  # never a test dish
+    cases = load_a1(ecfg, "realistic_dev")   # a dev split: no allow_test needed
+    first = cases[0]
+    assert first["expected"]["avoid"] == ["milk", "soy"]   # allergen order
+    assert [m["role"] for m in first["messages"]] == ["user", "assistant", "user"]
+    assert first["expected"]["unsupported"] == ["kosher"] and first["split"] == "realistic_dev"
+    assert cases[1]["expected"]["unsupported"] == ["low_sodium"]
+
+
+def test_realistic_dev_is_well_labelled():
+    path = ML_HOME / "evalsets" / "a1_realistic_dev.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    allergens = set(CrossCheck(config.load("parse_request")["cross_check"]).category)
+    labels = set(config.load("parse_request")["unsupported_labels"])
+    dev_dishes = {json.loads(line)["dish_id"] for line in
+                  (ML_HOME / "evalsets" / "a1_dev.jsonl").read_text().splitlines()}
+    assert len(rows) >= 30 and len({r["case_id"] for r in rows}) == len(rows)
+    for r in rows:
+        e, text = r["expected"], " ".join(m["content"] for m in r["messages"])
+        assert r["split"] == "realistic_dev" and r["dish_id"] in dev_dishes  # no test dish
+        assert e["zip"] is None or e["zip"] in text
+        assert set(e["avoid"]) <= allergens and set(e["unsupported"]) <= labels
+        assert e["diet"] in ("none", "vegetarian", "vegan")

@@ -1,7 +1,9 @@
 # Evaluation sets. A2 reads the data pipeline's golden recipes and DVC catalog; A1 is
 # generated from catalog dish names with the phrase bank below (seeded, reproducible).
-# The bank is kept apart from the cross-check's synonym table (parse_request.yaml) on
-# purpose: the cross-check is tested on wording it was not written against.
+# Note: most words in this bank also appear in the cross-check's word lists
+# (parse_request.yaml), so on these generated sets the cross-check is close to 100% by
+# construction. The hand-written evalsets/a1_realistic.jsonl (held out, read by `select
+# final`) is the check on wording neither was written against.
 
 a2:
   # Catalog dishes ranked by Food.com reviews, cut into equal tiers (most reviewed first)
@@ -19,6 +21,12 @@ a1:
   p_unsupported: 0.2
   p_servings: 0.3
   p_alias: 0.4                # ask for the dish by one of its aliases instead of its name
+  # Hand-written realistic chats (evalsets/a1_realistic.jsonl) left out of the realistic
+  # metrics and gate: they paraphrase the REVIEW-FIXES examples the cross-check was fixed
+  # on ("cashews especially", "nut allergy", "lactose intolerant"), so they are not an
+  # independent check. They stay as unit tests (tests/test_parse_request.py).
+  realistic_excluded: [a1r-banana-bread-0, a1r-butter-chicken-0, a1r-spinach-artichoke-dip-0,
+                       a1r-vegan-pancake-0]
   # Aliases with these words imply a diet or allergy ("vegan pancakes"), which would make
   # the expected labels ambiguous, so they are never used
   alias_skip_words: [vegan, vegetarian, free, keto, paleo, low, sugar, gluten, dairy, healthy,
@@ -79,3 +87,14 @@ sensitivity:
     "i would like to prepare": "i'm planning to make"
     "no ": "nothing with "
     "please": "if you can"
+
+# A3: synthetic result.json files (evalsets.generate_a3). Same dev/test dishes as A1.
+a3:
+  seed: 20261111
+  output_dir: evalsets
+  avoid_counts: [1, 1, 2]       # allergens avoided per case (picked from the dish's)
+  diet_weights: {none: 0.6, vegetarian: 0.25, vegan: 0.15}
+  unknown_share: 0.2            # chance a product is unknown instead of safe/unsafe
+  servings: [2, 4, 6, null]
+  unsupported_share: 0.15
+  unsupported: [halal, kosher, low_sodium, diabetic]

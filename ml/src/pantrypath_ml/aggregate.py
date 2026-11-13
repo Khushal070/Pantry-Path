@@ -1,8 +1,9 @@
 """Collect one search's runs into a comparison table and charts (reports/search/<id>/).
 
 Each row is one setting with its dev metrics, its largest slice gap on the main metric
-and whether it passes the validation and bias gates. For A2, a setting's loo run (if the
-grid has one) supplies the bias gap, since 100 dishes slice better than 16.
+and whether it passes the hard and bias gates (the A2 bias gate only warns). For A2, a
+setting's loo run (if the grid has one) supplies the bias gap, since 100 dishes slice
+better than 16.
 With --log-mlflow every run is logged to MLflow from this one process (the Explorer
 path: array tasks run with --no-mlflow).
 
@@ -30,9 +31,15 @@ log = logging.getLogger(__name__)
 A1_COLUMNS = ["allergens_captured", "allergen_exact", "allergen_precision",
               "extra_allergen_rate", "diet_captured", "diet_accuracy", "dish_resolution",
               "zip_accuracy", "valid_json_rate", "unsupported_recall", "crosscheck_catch_rate",
-              "false_confirmation_rate", "latency_mean_s", "latency_p95_s"]
+              "false_confirmation_rate", "ambiguous_confirmation_rate", "latency_mean_s",
+              "latency_p95_s"]
 A2_COLUMNS = ["recall", "core_precision", "valid_profile_rate", "false_refusal_rate",
               "error_rate", "latency_mean_s", "latency_p95_s"]
+A3_COLUMNS = ["valid_json_rate", "final_clean_rate", "grounded_rate", "verdict_safety_rate",
+              "substitute_safety_rate", "text_safety_rate", "coverage_rate",
+              "missing_handled_rate", "repaired_rate", "cut_off_calls",
+              "latency_mean_s", "latency_p95_s"]
+COLUMNS = {"a1": A1_COLUMNS, "a2": A2_COLUMNS, "a3": A3_COLUMNS}
 SETTING = ["candidate", "quantization", "server", "temperature", "think"]
 RECORDS = {"a1": "cases.jsonl", "a2": "dishes.jsonl"}
 
@@ -50,9 +57,20 @@ def search_runs(search_id: str) -> list[tuple[Path, dict[str, Any]]]:
     return found
 
 
+def prompt_variant(summary: dict[str, Any]) -> str | None:
+    """The run's prompt variant; an A3 run from before the variants gets the variant whose
+    prompt has its version (answer/1 -> model_list)."""
+    p = summary["params"]
+    if p.get("prompt_variant") or summary.get("task") != "a3":
+        return p.get("prompt_variant")
+    from pantrypath_ml.answer import variant_of_version
+
+    return variant_of_version(config.load("answer"), p.get("prompt_version"))
+
+
 def setting_key(summary: dict[str, Any]) -> tuple:
     p = summary["params"]
-    return (summary["task"], *(p[k] for k in SETTING), p.get("prompt_variant"))
+    return (summary["task"], *(p[k] for k in SETTING), prompt_variant(summary))
 
 
 def rows(runs: list[tuple[Path, dict[str, Any]]], gates: Config) -> list[dict[str, Any]]:
@@ -67,21 +85,36 @@ def rows(runs: list[tuple[Path, dict[str, Any]]], gates: Config) -> list[dict[st
         if "dev" not in splits:
             continue
         folder, summary = splits["dev"]
-        bias_folder, _ = splits.get("loo", splits["dev"])
-        result = bias.analyze(task, read_jsonl(bias_folder / RECORDS[task]), size)
-        main = gates["bias"]["main_metric"][task]
-        verdict = gate(task, summary, result["largest_gap"][main]["gap"], gates)
+        if "loo" in splits and not splits["loo"][1]["params"].get("held_out_excluded"):
+            # an older leave-one-out run that still asks the golden test dishes
+            log.warning("Not using %s for the bias gap: it includes the golden test dishes",
+                        splits["loo"][1]["run_id"])
+            del splits["loo"]
+        bias_folder, bias_summary = splits.get("loo", splits["dev"])
+        gap = None
+        if task in gates["bias"]["main_metric"]:
+            result = bias.analyze(task, read_jsonl(bias_folder / RECORDS[task]), size)
+            gap = result["largest_gap"][gates["bias"]["main_metric"][task]]["gap"]
+            verdict = gate(task, summary, gap, gates,
+                           on_insufficient=gates["bias"]["on_insufficient"]["search"])
+        else:  # A3: not sliced for the bias gate
+            verdict = gate(task, summary, None, gates, on_insufficient="skip")
         p = summary["params"]
-        columns = A1_COLUMNS if task == "a1" else A2_COLUMNS
+        columns = COLUMNS[task]
         out.append({
             "task": task, **{k: p[k] for k in SETTING}, "model": p["model"],
-            "params_b": p["params_b"], "prompt_variant": p.get("prompt_variant"),
+            "params_b": p["params_b"], "prompt_variant": prompt_variant(summary),
             "prompt_version": p["prompt_version"], "cases": summary["cases"],
             **{c: summary.get(c) for c in columns},
-            "bias_gap": result["largest_gap"][main]["gap"],
+            "bias_gap": gap, "bias_status": verdict["bias"]["status"],
             "bias_split": "loo" if "loo" in splits else "dev",
+            "bias_run": bias_summary["run_id"],
             "passed": verdict["passed"], "failures": verdict["failures"],
+            "warnings": verdict["warnings"],
             "run_id": summary["run_id"], "folder": str(folder),
+            # a rescored run says what it was rescored from (A3: the attempt history or,
+            # for older runs, each case's last reply only)
+            "rescored_from": (summary.get("rescored") or {}).get("from"),
         })
     return sorted(out, key=lambda r: (r["task"], -int(r["passed"]), r["run_id"]))
 
@@ -112,7 +145,7 @@ def charts(table: list[dict[str, Any]], folder: Path) -> list[Path]:
 
 def render(search_id: str, table: list[dict[str, Any]], made: list[Path]) -> str:
     lines = [f"# Search {search_id}: comparison", "",
-             "Dev-split metrics per setting. **Passes** = validation and bias gates "
+             "Dev-split metrics per setting. **Passes** = hard and bias gates "
              "(configs/gates.yaml). Bias gap = largest gap between slices on the main metric.",
              ""]
     for task, metrics in (("a1", ["allergens_captured", "allergen_exact", "diet_captured",
@@ -125,7 +158,8 @@ def render(search_id: str, table: list[dict[str, Any]], made: list[Path]) -> str
         lines += [f"## {task.upper()}", "", markdown_table(
             ["Setting", *metrics, "Latency", "Bias gap", "Passes"],
             [[label(r), *(pct(r[m]) for m in metrics), num(r["latency_mean_s"], " s"),
-              pct(r["bias_gap"]), "yes" if r["passed"] else "no: " + "; ".join(r["failures"])]
+              pct(r["bias_gap"]), ("yes" if r["passed"] else "no: " + "; ".join(r["failures"]))
+              + (" (bias warning)" if r.get("warnings") else "")]
              for r in part]), ""]
     lines += [f"![{p.stem}]({p.name})" for p in made]
     return "\n".join(lines) + "\n"

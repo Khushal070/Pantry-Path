@@ -1,23 +1,79 @@
-# Gates: the targets in section 7 of docs/model-pipeline-plan.md. A setting is chosen only
-# if it passes the validation and bias gates; the champion is replaced only by one that is
-# no worse on any gated metric and better on the selection score.
+# Gates. A setting is chosen or promoted only if it passes the hard gates and, where it
+# blocks, the bias gate (absolute), and, against the current champion, is no worse on
+# every other metric in `goals` and `score` (no regression) and better on the selection
+# score.
 
-validation:
+# Hard gates: a setting below one of these is never chosen or promoted
+hard:
   a1:
     allergens_captured: {min: 1.0}      # with the cross-check as a backstop
     diet_captured: {min: 1.0}
     unsupported_recall: {min: 1.0}
-    dish_resolution: {min: 0.95}
     valid_json_rate: {min: 0.99}
   a2:
     valid_profile_rate: {min: 0.99}
-    recall: {min: 0.75}
-    core_precision: {min: 0.85}
+  # The hand-written everyday-phrasing set (evalsets/a1_realistic.jsonl, without the four
+  # cases in evalsets.yaml a1.realistic_excluded), select final only. The safety targets
+  # hold here too: it is the check on wording the cross-check was not written against.
+  a1_realistic:
+    allergens_captured: {min: 1.0}
+    diet_captured: {min: 1.0}
+    valid_json_rate: {min: 0.97}
+  # A3: the answer that is shown always passes the grounding check (final_clean_rate, the
+  # repair works), a usable reply comes back (without one the app shows result.json as it
+  # is), and at most half the answers need the repair: a model the check has to rewrite
+  # more often than not is not the one writing the answer. The model's own reply before
+  # repair is measured by the goals. {max: x} is a ceiling.
+  a3:
+    final_clean_rate: {min: 1.0}
+    valid_json_rate: {min: 0.95}
+    repaired_rate: {max: 0.5}
+
+# The targets in section 8 of docs/model-pipeline-plan.md: reported (met or not) in every
+# selection and final report, not gated. Those without a hard gate are checked for no
+# regression against the champion.
+goals:
+  a1:
+    allergens_captured: 1.0
+    diet_captured: 1.0
+    unsupported_recall: 1.0
+    dish_resolution: 0.95
+    valid_json_rate: 0.99
+  a2:
+    valid_profile_rate: 0.99
+    recall: 0.75
+    core_precision: 0.85
+  a1_realistic:
+    allergens_captured: 1.0
+    diet_captured: 1.0
+  # A3, on the model's reply before repair
+  a3:
+    verdict_safety_rate: 0.95
+    substitute_safety_rate: 0.90
+    text_safety_rate: 0.90
+    coverage_rate: 0.90
+    missing_handled_rate: 0.90
 
 bias:
   max_gap: 0.10                         # largest gap between slices, main metric
   min_group_size: 10                    # smaller groups are reported, not gated
   main_metric: {a1: allergens_captured, a2: recall}
+  # Per task: blocking (a gap over max_gap fails the setting) or a reported warning, with
+  # the reason recorded in the selection and final reports. a1_realistic and A3 are not
+  # sliced for the gate (A3 slices are reported in its summary).
+  blocking: {a1: true, a2: false}
+  warning_reason:
+    a2: >-
+      Reported, not blocking: the A2 cuisine groups are small (golden dev: at most 5
+      dishes per cuisine; search leave-one-out, without the golden test dishes: 48
+      american, 7 or fewer for every other cuisine; the full leave-one-out in select
+      final: 60 american, 10 or fewer for every other cuisine), and the leave-one-out
+      references are catalog entries written by an LLM, not ground truth, so a gap there
+      is a consistency signal, not a measured error rate.
+  # When no two groups reach min_group_size the gap can't be measured (status
+  # "insufficient", never a silent pass). Where the bias gate blocks, "fail" fails the
+  # setting and "warn" records a warning; where it doesn't block, it is always a warning.
+  on_insufficient: {search: warn, ci: warn, final: fail}
 
 # On the deployed server only (ml/serving/latency_check.py), not on dev machines or CI
 latency:
@@ -29,6 +85,10 @@ score:
   a1: {allergen_exact: 0.4, dish_resolution: 0.3, diet_accuracy: 0.2, zip_accuracy: 0.1}
   a2: {recall: 0.6, core_precision: 0.4}
 
-# The small held-out evaluation in GitHub Actions (CPU runner, Ollama)
+# The small evaluation in GitHub Actions (CPU runner, Ollama): a seeded sample of the DEV
+# splits, spread over phrasing styles, diets and allergens (A1) and cuisines (A2, A3). CI
+# never reads the test or realistic splits: running them on every push would turn them
+# into tuning data. Promotion needs a committed full `select final` report (select.py).
 ci:
-  limit: {a1: 12, a2: 3}
+  split: dev
+  limit: {a1: 14, a2: 4, a3: 3}

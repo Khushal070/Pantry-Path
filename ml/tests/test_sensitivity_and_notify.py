@@ -32,6 +32,22 @@ def test_perturbations_are_seeded():
     assert one == two
 
 
+def record(case_id, status="ok", **failed):
+    score = {m: not failed.get(m) for m in sensitivity.METRICS}
+    return {"case_id": case_id, "score": score, "result": {"status": status}}
+
+
+def test_losses_lists_cases_worse_than_their_unperturbed_version():
+    records = {"original": [record("c1"), record("c2", allergen_exact=True)],
+               "paraphrase": [record("c1~paraphrase", "needs_confirmation",
+                                     allergens_captured=True),
+                              record("c2~paraphrase", allergen_exact=True)]}
+    assert sensitivity.losses(records) == [
+        {"case_id": "c1~paraphrase", "perturbation": "paraphrase",
+         "lost": ["allergens_captured"], "status": "needs_confirmation"}]
+    assert sensitivity.losses({"paraphrase": records["paraphrase"]}) == []  # no original run
+
+
 def test_curve_means_per_x_and_group():
     rows = [{"t": 0.0, "g": "a", "m": 0.5}, {"t": 0.0, "g": "a", "m": 1.0},
             {"t": 0.5, "g": "a", "m": None}, {"t": 0.5, "g": "b", "m": 0.2}]

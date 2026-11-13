@@ -1,8 +1,11 @@
 """LocalLLMClient: a self-hosted model behind an OpenAI-compatible server, as an LLMClient.
 
 Servers and candidates come from configs/candidates.yaml; MODEL_SERVER_URL and MODEL_NAME
-override the base URL and model id for one run, and MODEL_SERVER_TOKEN adds a bearer token
-(a private Cloud Run service). Replies are held to the request's JSON schema through
+override the base URL and model id for one run. A private Cloud Run service needs a bearer
+token: MODEL_SERVER_TOKEN for a short job (a token from `gcloud auth print-identity-token`
+lasts about an hour), or MODEL_SERVER_AUTH=google for a long-running caller such as the
+backend, which then mints and refreshes Google ID tokens for the server's URL itself.
+Replies are held to the request's JSON schema through
 `response_format` (/v1/chat/completions) or, for Ollama, through its `format` field
 (native /api/chat, because Ollama's /v1 ignores `format`).
 
@@ -41,6 +44,7 @@ log = logging.getLogger(__name__)
 
 JSON_MODES = ("response_format", "ollama_format")
 NO_THINK = "\n/no_think"  # Qwen3's switch to answer without thinking
+CUT_OFF = "cut off"  # in the error of a reply stopped by the output cap
 
 
 @dataclass
@@ -111,7 +115,39 @@ def _snippet(text: str, limit: int = 300) -> str:
     return " ".join(text.split())[:limit]
 
 
-def _post_json(url: str, *, body: dict, model: str, settings: dict[str, Any]) -> dict:
+_ID_TOKENS: dict[str, tuple[str, float]] = {}  # audience -> (token, time it was minted)
+ID_TOKEN_TTL_S = 45 * 60  # Google ID tokens last an hour; refresh well before
+
+
+def _google_id_token(audience: str) -> str:
+    """A Google ID token for a Cloud Run URL, from the caller's own credentials (the
+    metadata server on Cloud Run, or a service account key), cached and refreshed."""
+    cached = _ID_TOKENS.get(audience)
+    if cached and time.monotonic() - cached[1] < ID_TOKEN_TTL_S:
+        return cached[0]
+    try:
+        import google.auth.transport.requests
+        import google.oauth2.id_token
+
+        token = google.oauth2.id_token.fetch_id_token(
+            google.auth.transport.requests.Request(), audience)
+    except Exception as exc:  # google-auth raises several unrelated error types
+        raise LLMError(f"Could not get a Google ID token for {audience} "
+                       f"(MODEL_SERVER_AUTH=google): {exc}") from exc
+    _ID_TOKENS[audience] = (token, time.monotonic())
+    return token
+
+
+def _auth_headers(audience: str) -> dict[str, str]:
+    """MODEL_SERVER_TOKEN as is, or a minted Google ID token with MODEL_SERVER_AUTH=google."""
+    token = secret("MODEL_SERVER_TOKEN")
+    if not token and (secret("MODEL_SERVER_AUTH") or "").lower() == "google":
+        token = _google_id_token(audience)
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def _post_json(url: str, *, body: dict, model: str, settings: dict[str, Any],
+               audience: str | None = None) -> dict:
     """POST with retries on 429, 5xx and network errors; other errors fail at once.
 
     A read timeout (the server took the request but no reply came in time) is tried at
@@ -120,8 +156,8 @@ def _post_json(url: str, *, body: dict, model: str, settings: dict[str, Any]) ->
     attempts = int(settings.get("max_attempts", 4))
     read_timeout_attempts = int(settings.get("read_timeout_attempts", attempts))
     read_timeouts = 0
-    token = secret("MODEL_SERVER_TOKEN")
-    extra = {"headers": {"Authorization": f"Bearer {token}"}} if token else {}
+    headers = _auth_headers(audience or url)
+    extra = {"headers": headers} if headers else {}
 
     @retry(
         retry=retry_if_exception_type(_TransientError),
@@ -188,10 +224,14 @@ class LocalLLMClient:
         think = bool(self.settings.get("think", False))
         max_tokens = int(self.settings.get("max_output_tokens", 8192))
         if self.json_mode == "ollama_format":
+            options = {"temperature": temperature, "num_predict": max_tokens}
+            if self.settings.get("context_length"):
+                # sent with every request: a plain `ollama serve` defaults to a short context
+                # and silently cuts long prompts
+                options["num_ctx"] = int(self.settings["context_length"])
             return f"{self.base_url}/api/chat", {
                 "model": self.model, "messages": [{"role": "user", "content": prompt}],
-                "stream": False, "format": schema, "think": think,
-                "options": {"temperature": temperature, "num_predict": max_tokens},
+                "stream": False, "format": schema, "think": think, "options": options,
             }
         content = prompt if think else prompt + NO_THINK
         name = re.sub(r"[^A-Za-z0-9_-]", "_", purpose)[:64] or "reply"
@@ -226,7 +266,8 @@ class LocalLLMClient:
     def complete_json(self, prompt: str, schema: dict, *, purpose: str) -> LocalLLMReply:
         url, body = self._request(prompt, schema, purpose)
         start = time.perf_counter()
-        payload = _post_json(url, body=body, model=self.model, settings=self.settings)
+        payload = _post_json(url, body=body, model=self.model, settings=self.settings,
+                             audience=self.base_url)
         latency = round(time.perf_counter() - start, 3)
         text, usage, finish, refusal = self._read(payload)
         reply = LocalLLMReply(data={}, usage=usage, model=payload.get("model") or self.model,
@@ -236,7 +277,7 @@ class LocalLLMClient:
         if refusal:
             raise LLMReplyError(f"The model declined the request: {refusal}", reply)
         if finish == "length":
-            raise LLMReplyError("The model reply was cut off; raise client.max_output_tokens "
+            raise LLMReplyError(f"The model reply was {CUT_OFF}; raise client.max_output_tokens "
                                 "or the server's context length", reply)
         if finish not in (None, "stop"):
             raise LLMReplyError(f"The model stopped early (finish reason {finish})", reply)
@@ -351,4 +392,6 @@ class RecordingClient:
             "latency_s": round(sum(c["latency_s"] for c in calls), 3),
             "input_tokens": sum(c["input_tokens"] for c in calls),
             "output_tokens": sum(c["output_tokens"] for c in calls),
+            # replies stopped by the output cap (max_output_tokens), retried or not
+            "cut_off_calls": sum(CUT_OFF in (c["error"] or "") for c in calls),
         }

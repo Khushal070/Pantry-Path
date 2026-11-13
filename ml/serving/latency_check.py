@@ -8,6 +8,11 @@ token in MODEL_SERVER_TOKEN:
     export MODEL_SERVER_URL=https://<service-url>
     export MODEL_SERVER_TOKEN="$(gcloud auth print-identity-token)"
     python ml/serving/latency_check.py [--a1 10] [--a2 3]
+    python ml/serving/latency_check.py --smoke      # after a deploy (CI)
+
+--smoke checks that the deployed server works (3 A1 chats, 1 A2 dish, every reply valid)
+and only reports latency; it exits 1 if a reply is unusable, so CI can roll back. The
+default mode also fails when the mean latency is over gates.yaml `latency`.
 
 The first request after scaling from zero includes the cold start; it is warmed up first
 and not counted.
@@ -42,7 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--a1", type=int, default=10, help="A1 dev cases")
     parser.add_argument("--a2", type=int, default=3, help="A2 dev dishes")
+    parser.add_argument("--smoke", action="store_true",
+                        help="3 A1 + 1 A2 items; fail only on unusable replies")
     args = parser.parse_args(argv)
+    if args.smoke:
+        args.a1, args.a2 = 3, 1
     setup_logging()
     if not secret("MODEL_SERVER_URL"):
         parser.error("set MODEL_SERVER_URL to the deployed server")
@@ -58,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
                          overrides={k: champion["a1"][k] for k in ("temperature", "think")},
                          **common)
     a2 = evaluate_a2.run(champion["candidate"], "dev", limit=args.a2,
+                         variant=champion["a2"].get("prompt_variant"),
                          overrides={k: champion["a2"][k] for k in ("temperature", "think")},
                          **common)
     result = {
@@ -66,10 +76,14 @@ def main(argv: list[str] | None = None) -> int:
         "a2": {"mean_s": a2["latency_mean_s"], "p95_s": a2["latency_p95_s"],
                "max_s": limits["a2_max_s"]},
     }
+    result["a1"]["valid"] = a1["valid_json_rate"] == 1.0
+    result["a2"]["valid"] = a2["valid_profile_rate"] == 1.0
     for r in result.values():
-        r["passed"] = r["mean_s"] is not None and r["mean_s"] <= r["max_s"]
+        r["latency_ok"] = r["mean_s"] is not None and r["mean_s"] <= r["max_s"]
+        r["passed"] = r["valid"] and (args.smoke or r["latency_ok"])
+    result["mode"] = "smoke" if args.smoke else "latency"
     print(json.dumps(result))
-    return 0 if all(r["passed"] for r in result.values()) else 1
+    return 0 if all(r["passed"] for k, r in result.items() if k != "mode") else 1
 
 
 if __name__ == "__main__":

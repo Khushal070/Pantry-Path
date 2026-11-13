@@ -16,11 +16,16 @@ Metrics (rates over all cases; an unusable reply counts as a miss):
   alone), over the cases that have an unsupported need.
 - crosscheck_catch_rate: of the cases where the model missed an allergen or diet, the
   share the cross-check flagged; false_confirmation_rate: confirmations asked although
-  the model's avoid and diet were exactly right.
+  the model's avoid, diet and ZIP were exactly right; ambiguous_confirmation_rate: those
+  asked only about an ambiguous word ("nut allergy": tree nuts and peanuts?), reported
+  apart and not counted as false: the question is the intended answer to that wording.
 - latency and tokens per case. The same metrics per phrasing style, diet and allergen.
 
-    python -m pantrypath_ml.evaluate_a1 --candidate qwen3-4b --split dev|test \
-        [--variant base] [--limit N]
+    python -m pantrypath_ml.evaluate_a1 --candidate qwen3-4b \
+        --split dev|realistic_dev|test|realistic \
+        [--variant rules_v2] [--limit N]
+
+--limit takes a seeded sample spread over phrasing styles, not the first N cases.
 """
 
 import argparse
@@ -30,7 +35,7 @@ from collections.abc import Callable
 from typing import Any
 
 from pantrypath_ml import config
-from pantrypath_ml.evalsets import load_a1
+from pantrypath_ml.evalsets import HELD_OUT, load_a1
 from pantrypath_ml.local_llm import (
     Candidate,
     RecordingClient,
@@ -42,6 +47,7 @@ from pantrypath_ml.local_llm import (
 from pantrypath_ml.parse_request import (
     DIET_RANK,
     CrossCheck,
+    catalog_resolver,
     load_prompt,
     parse_request,
     prompt_version,
@@ -52,6 +58,7 @@ from pantrypath_ml.reporting import (
     new_run_id,
     ratio,
     run_dir,
+    sample,
     usage_stats,
     write_json,
     write_jsonl,
@@ -59,7 +66,6 @@ from pantrypath_ml.reporting import (
 from pantrypath_pipeline.config import Config
 from pantrypath_pipeline.errors import PipelineError
 from pantrypath_pipeline.logging_setup import setup_logging
-from pantrypath_pipeline.store import find_dish
 
 log = logging.getLogger(__name__)
 
@@ -71,15 +77,7 @@ RATES = ("valid_json_rate", "allergen_exact", "allergens_captured", "extra_aller
 
 def dish_resolver(pcfg: Config) -> Callable[[str | None], str | None]:
     """query -> catalog dish_id, with the request flow's catalog and fuzzy threshold."""
-    db = pcfg.path(pcfg["catalog"]["sqlite_output"])
-    min_score = float(pcfg["request"]["fuzzy_min_score"])
-
-    def resolve(query: str | None) -> str | None:
-        if not query:
-            return None
-        dish = find_dish(db, query, min_score)
-        return dish.dish_id if dish else None
-    return resolve
+    return catalog_resolver(pcfg)
 
 
 def score_case(case: dict[str, Any], result: dict[str, Any],
@@ -100,6 +98,11 @@ def score_case(case: dict[str, Any], result: dict[str, Any],
     unsupported = set(exp["unsupported"])
     extra = model_avoid - expected_avoid if valid else set()
     exact = valid and model_avoid == expected_avoid and model_diet == exp["diet"]
+    right = exact and fields.get("zip") == exp["zip"]
+    asked = result["status"] == "needs_confirmation"
+    # every conflict is an ambiguous-word question (one per clarify allergen)
+    ambiguous = bool(result.get("clarify")) \
+        and len(result.get("conflicts") or []) == len(result["clarify"])
     return {
         "valid_json_rate": valid,
         "allergen_exact": valid and model_avoid == expected_avoid,
@@ -119,7 +122,8 @@ def score_case(case: dict[str, Any], result: dict[str, Any],
         if unsupported else None,
         "model_missed": not model_ok,
         "caught": not model_ok and captured,
-        "false_confirmation": result["status"] == "needs_confirmation" and exact,
+        "false_confirmation": asked and right and not ambiguous,
+        "ambiguous_confirmation": asked and right and ambiguous,
         # per expected allergen: found by the model, captured after the cross-check
         "per_allergen": {a: {"model": valid and a in model_avoid,
                              "captured": valid and a in final_avoid}
@@ -131,7 +135,7 @@ def evaluate_case(prcfg: Config, case: dict[str, Any], client: RecordingClient, 
                   variant: str, checker: CrossCheck, template: Any,
                   resolve: Callable[[str | None], str | None]) -> dict[str, Any]:
     result = parse_request(prcfg, case["messages"], client, variant=variant, template=template,
-                           checker=checker).to_dict()
+                           checker=checker, resolve=resolve).to_dict()
     resolved = resolve((result["fields"] or {}).get("query"))
     return {"case_id": case["case_id"], "dish_id": case["dish_id"], "split": case["split"],
             "messages": case["messages"], "expected": case["expected"],
@@ -156,6 +160,8 @@ def summarize(records: list[dict[str, Any]], *, with_slices: bool = True) -> dic
     summary["model_missed"] = len(missed)
     summary["crosscheck_catch_rate"] = ratio(sum(s["caught"] for s in missed), len(missed))
     summary["false_confirmation_rate"] = ratio(sum(s["false_confirmation"] for s in scores), n)
+    summary["ambiguous_confirmation_rate"] = ratio(
+        sum(s.get("ambiguous_confirmation", False) for s in scores), n)
     summary["needs_confirmation_rate"] = ratio(
         sum(r["result"]["status"] == "needs_confirmation" for r in records), n)
     summary.update(usage_stats(records))
@@ -182,8 +188,8 @@ def slices(records: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def run(candidate_name: str, split: str, *, variant: str = "base", limit: int | None = None,
-        server: str | None = None, quantization: str | None = None,
+def run(candidate_name: str, split: str, *, variant: str | None = None,
+        limit: int | None = None, server: str | None = None, quantization: str | None = None,
         overrides: dict[str, Any] | None = None, run_id: str | None = None,
         use_mlflow: bool = True, tags: dict[str, str] | None = None,
         cases: list[dict[str, Any]] | None = None, ccfg: Config | None = None,
@@ -192,12 +198,13 @@ def run(candidate_name: str, split: str, *, variant: str = "base", limit: int | 
     ccfg = ccfg or load_candidates()
     pcfg = pcfg or config.pipeline_config()
     prcfg = config.load("parse_request")
+    variant = variant or prcfg["default"]
     candidate = get_candidate(ccfg, candidate_name, server=server, quantization=quantization)
     settings = client_settings(ccfg, overrides, task=TASK)
     if cases is None:
-        cases = load_a1(config.load("evalsets"), split, allow_test=split == "test")
-    if limit:
-        cases = cases[:limit]
+        cases = load_a1(config.load("evalsets"), split, allow_test=split in HELD_OUT)
+    cases = sample(cases, limit, key=lambda c: (c["slices"]["style"], c["slices"]["diet"],
+                                                c["slices"]["allergens"]))
     version = prompt_version(prcfg, variant)
     run_id = run_id or new_run_id(TASK)
     client = RecordingClient(cached_client(ccfg, candidate, version, settings=settings,
@@ -241,9 +248,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantrypath_ml.evaluate_a1",
                                      description=__doc__.splitlines()[0])
     add_model_args(parser)
-    parser.add_argument("--split", choices=["dev", "test"], default="dev",
-                        help="test is the held-out set: gates and final results only")
-    parser.add_argument("--variant", default="base", help="prompt variant (parse_request.yaml)")
+    parser.add_argument("--split", choices=["dev", "test", "realistic", "realistic_dev"],
+                        default="dev",
+                        help="test and realistic are held out: gates and final results only")
+    parser.add_argument("--variant", default=None,
+                        help="prompt variant (configs/parse_request.yaml; default rules_v2)")
     args = parser.parse_args(argv)
     setup_logging()
     try:

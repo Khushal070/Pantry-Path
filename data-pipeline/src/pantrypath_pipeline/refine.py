@@ -424,13 +424,16 @@ def run_all(cfg: Config, client: LLMClient | None = None) -> dict[str, Any]:
 
 
 def profile_for_unknown_dish(cfg: Config, dish_name: str,
-                             client: LLMClient | None = None) -> DishProfile:
+                             client: LLMClient | None = None,
+                             template: tuple[string.Template, str] | None = None) -> DishProfile:
     """Request-time fallback for a dish that isn't in the catalog.
 
     Same prompt with no Food.com data, so every ingredient comes from the LLM: the
     profile has source 'llm' and every ingredient is added_by_llm. Replies are cached in
     llm.request_cache_dir, apart from the versioned batch cache. Raises LLMError when no
-    usable profile comes back.
+    usable profile comes back. `template` (text, version) replaces the refine prompt, e.g.
+    one written for a dish name with no recipe data; the schema, validation and retry stay
+    the same. Without it the prompt is prompts/refine_dish.txt, as before.
     """
     try:
         name = normalize_name(dish_name)
@@ -445,7 +448,8 @@ def profile_for_unknown_dish(cfg: Config, dish_name: str,
         client = get_client(cfg, cache_dir=cfg.path(cache_dir))
     dish = {"dish_id": dish_id, "name": name, "cuisine_hint": None, "recipe_count": 0,
             "review_count": 0, "sample_titles": [], "ingredients": []}
-    record = refine_dish(cfg, dish, [], client, source="llm", catalog_version="request")
+    record = refine_dish(cfg, dish, [], client, source="llm", catalog_version="request",
+                         template=template)
     if record["error"]:
         raise LLMError(f"Could not get ingredients for {dish_name!r} from the LLM: "
                        f"{record['error']}")

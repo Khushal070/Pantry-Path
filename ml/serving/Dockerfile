@@ -2,7 +2,7 @@
 # The weights are baked into the image at build time, so a Cloud Run cold start downloads
 # nothing. MODEL comes from the champion record (registry.py passes it):
 #   docker build --build-arg MODEL=qwen3:4b-q4_K_M -t pantrypath-model-server ml/serving
-ARG OLLAMA_VERSION=0.40.11
+ARG OLLAMA_VERSION=0.40.15
 FROM ollama/ollama:${OLLAMA_VERSION}
 
 ARG MODEL

@@ -19,8 +19,10 @@ port=$((20000 + index % 10000))  # tasks sharing a node need different ports
 echo "Task $index: $PP_SERVER serving $model on port $port"
 
 if [ "$PP_SERVER" = "vllm" ]; then
+  # --max-model-len must hold the prompt plus client.max_output_tokens (candidates.yaml):
+  # vLLM rejects a request whose prompt + max_tokens exceed it. Qwen3-4B supports 32k.
   HF_HUB_OFFLINE=1 "$PP_ROOT/venv-vllm/bin/vllm" serve "$model" --port "$port" \
-    --max-model-len 8192 --gpu-memory-utilization 0.85 --reasoning-parser qwen3 \
+    --max-model-len 16384 --gpu-memory-utilization 0.85 --reasoning-parser qwen3 \
     >"$PP_ROOT/logs/server-$SLURM_ARRAY_JOB_ID-$index.log" 2>&1 &
   ready="http://127.0.0.1:$port/v1/models"
 else

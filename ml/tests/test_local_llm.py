@@ -126,6 +126,10 @@ def test_output_cap_per_task_without_thinking(cfg):
     assert client_settings(cfg, task="a1")["max_output_tokens"] == 256
     assert client_settings(cfg, task="a2")["max_output_tokens"] == 1536
     assert client_settings(cfg, {"think": True}, task="a1")["max_output_tokens"] == 8192
+    assert client_settings(cfg, task="a3")["max_output_tokens"] == 2048
+    # A3 answers are long (A3 dev replies reach ~1,850 tokens): the cap is at least 1,500
+    assert min(client_settings(cfg, {"think": t}, task="a3")["max_output_tokens"]
+               for t in (False, True)) >= 1500
     assert client_settings(cfg)["max_output_tokens"] == 8192
 
 
@@ -168,7 +172,8 @@ def test_ollama_format_mode_sends_think(cfg, http):
     assert sent["json"]["think"] is False
     assert sent["json"]["messages"][0]["content"] == "prompt"  # no /no_think here
     assert sent["json"]["options"] == {"temperature": 0.0,
-                                       "num_predict": cfg["client"]["max_output_tokens"]}
+                                       "num_predict": cfg["client"]["max_output_tokens"],
+                                       "num_ctx": cfg["client"]["context_length"]}
 
 
 def test_bearer_token_for_a_private_server(cfg, http, monkeypatch):
@@ -176,6 +181,39 @@ def test_bearer_token_for_a_private_server(cfg, http, monkeypatch):
     fake = http([(200, openai_payload('{"dish": "a"}'))])
     qwen(cfg).complete_json("prompt", SCHEMA, purpose="t")
     assert fake.requests[0]["headers"] == {"Authorization": "Bearer tok"}
+
+
+def test_google_id_token_for_a_cloud_run_server(cfg, http, monkeypatch):
+    monkeypatch.setenv("MODEL_SERVER_AUTH", "google")
+    monkeypatch.setattr(local_llm, "_google_id_token", lambda audience: f"id-for-{audience}")
+    fake = http([(200, openai_payload('{"dish": "a"}'))])
+    qwen(cfg).complete_json("prompt", SCHEMA, purpose="t")
+    assert fake.requests[0]["headers"] == {
+        "Authorization": "Bearer id-for-http://localhost:11434"}  # audience: the base URL
+
+
+def test_a_fixed_token_wins_over_minting(cfg, http, monkeypatch):
+    monkeypatch.setenv("MODEL_SERVER_AUTH", "google")
+    monkeypatch.setenv("MODEL_SERVER_TOKEN", "fixed")
+    monkeypatch.setattr(local_llm, "_google_id_token", lambda audience: pytest.fail("minted"))
+    fake = http([(200, openai_payload('{"dish": "a"}'))])
+    qwen(cfg).complete_json("prompt", SCHEMA, purpose="t")
+    assert fake.requests[0]["headers"] == {"Authorization": "Bearer fixed"}
+
+
+def test_id_tokens_are_cached_then_refreshed(monkeypatch):
+    import google.oauth2.id_token
+
+    minted = []
+    monkeypatch.setattr(google.oauth2.id_token, "fetch_id_token",
+                        lambda request, audience: minted.append(audience) or f"t{len(minted)}")
+    monkeypatch.setattr(local_llm, "_ID_TOKENS", {})
+    clock = [1000.0]
+    monkeypatch.setattr(local_llm.time, "monotonic", lambda: clock[0])
+    assert local_llm._google_id_token("https://run.app") == "t1"
+    assert local_llm._google_id_token("https://run.app") == "t1"
+    clock[0] += local_llm.ID_TOKEN_TTL_S + 1
+    assert local_llm._google_id_token("https://run.app") == "t2"
 
 
 def test_malformed_reply_raises_with_usage(cfg, http):
@@ -252,15 +290,18 @@ def test_usage_and_latency_recorded(cfg, http, monkeypatch):
 
 
 def test_recording_client_counts_calls_tokens_cache_hits_and_errors(cfg, http):
-    http([(200, openai_payload('{"dish": "a"}')), (200, openai_payload("not json"))])
+    http([(200, openai_payload('{"dish": "a"}')), (200, openai_payload("not json")),
+          (200, openai_payload('{"dish": "lasa', finish="length"))])
     client = RecordingClient(cached_client(cfg, get_candidate(cfg, "qwen3-4b"), "v1"))
     client.complete_json("p", SCHEMA, purpose="t")
     client.complete_json("p", SCHEMA, purpose="t")  # replayed from the cache
     with pytest.raises(LLMReplyError):
         client.complete_json("q", SCHEMA, purpose="t")
+    with pytest.raises(LLMReplyError, match="cut off"):
+        client.complete_json("r", SCHEMA, purpose="t")
     totals = client.take()
-    assert (totals["calls"], totals["cached_calls"]) == (3, 1)
-    assert totals["input_tokens"] == 800 * 3 and totals["output_tokens"] == 250 * 3
+    assert (totals["calls"], totals["cached_calls"], totals["cut_off_calls"]) == (4, 1, 1)
+    assert totals["input_tokens"] == 800 * 4 and totals["output_tokens"] == 250 * 4
     assert client.take()["calls"] == 0  # take() starts a new tally
 
 

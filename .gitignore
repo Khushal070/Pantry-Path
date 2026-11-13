@@ -25,10 +25,11 @@ data-pipeline/reports/stats_prev.json
 .ruff_cache/
 .pytest_cache/
 
-# Model pipeline: MLflow store, LLM reply caches, and raw per-run evaluation folders
-# (aggregated reports under ml/reports/search, final, bias and sensitivity stay in Git)
+# Model pipeline: MLflow store, LLM reply caches and every report folder. The one
+# exception is reports/final/: commit only the reports/final/<id>/ folder of the run being
+# promoted (select promote reads it from Git), never the other final runs (ml/README.md)
 ml/mlruns/
 ml/cache/
-ml/reports/a1/
-ml/reports/a2/
+ml/reports/*
+!ml/reports/final/
 ml/pytest-report.xml

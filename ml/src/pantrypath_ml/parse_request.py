@@ -9,13 +9,16 @@ is less strict, the result needs the user's confirmation, with a suggested reque
 takes the stricter of the two. Unsupported needs from the scan always end up in
 extras.unsupported. An allergen the model put in avoid that the chat never mentions (no
 avoid or "fine" phrase names it, and no condition such as celiac implies it) also needs
-confirmation. The scan only ever adds caution: it never removes an allergen the model
-chose to avoid.
+confirmation, and so does an ambiguous word ("nuts": peanuts too?) the model didn't
+resolve. The scan only ever adds caution: it never removes an allergen the model chose to
+avoid. The ZIP is checked against the chat the same way: a ZIP the chat doesn't contain
+is dropped, a missing one is taken from the chat, and a different one needs confirmation.
 """
 
 import json
 import re
 import string
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -160,6 +163,16 @@ def _alternation(words: list[str]) -> str:
     return "|".join(re.escape(w) for w in sorted(set(words), key=len, reverse=True))
 
 
+def _cue(words: list[str]) -> re.Pattern:
+    """A cue phrase; it may end in punctuation ("allergies:"), so it ends with a lookahead
+    instead of a word boundary."""
+    return re.compile(rf"\b(?:{_alternation(words)})(?![a-z0-9])")
+
+
+# A list after a cue is split into items at these separators
+_ITEM_SPLIT = re.compile(r"(,|&|/|\(|\)|:|\band\b|\bor\b)")
+
+
 @dataclass
 class Scan:
     avoid: list[str] = field(default_factory=list)
@@ -167,25 +180,43 @@ class Scan:
     unsupported: list[str] = field(default_factory=list)
     # allergens named in an avoid or "fine" phrase, or implied by a condition (celiac)
     mentioned: list[str] = field(default_factory=list)
+    # allergens an avoided word leaves open ("nuts": peanuts too?); never added to avoid
+    clarify: list[str] = field(default_factory=list)
 
 
 class CrossCheck:
-    """Keyword scan of the user's messages for allergens, diets and unsupported needs."""
+    """Keyword scan of the user's messages for allergens, diets and unsupported needs.
+
+    Every avoid or "fine" mention is an event (position, kind, allergen, word). A word can
+    stand for several allergens ("seafood": fish and shellfish). A "fine" mention clears an
+    allergen only when it names the whole allergen ("eggs are fine", "dairy is fine"); a
+    narrower word only withdraws itself, so "allergic to shrimp but crab is fine" still
+    avoids shellfish.
+    """
 
     def __init__(self, settings: dict[str, Any]):
         self.s = settings
-        self.term_to_allergen = {form: allergen for allergen, words in settings["allergens"].items()
-                                 for w in words for form in _forms(w)}
+        # word form -> (the configured word, the allergens it stands for)
+        self.term_info: dict[str, tuple[str, list[str]]] = {}
+        for allergen, words in settings["allergens"].items():
+            for w in words:
+                for form in _forms(w):
+                    _, allergens = self.term_info.setdefault(form, (w, []))
+                    if allergen not in allergens:
+                        allergens.append(allergen)
+        self.category = {a: set(settings.get("category_words", {}).get(a) or [words[0]])
+                         for a, words in settings["allergens"].items()}
+        self.ambiguous = dict(settings.get("ambiguous") or {})
         self.term_to_unsupported = {
             form: label for label, words in settings["unsupported_allergens"].items()
             for w in words for form in _forms(w)}
-        terms = _alternation([*self.term_to_allergen, *self.term_to_unsupported])
+        terms = _alternation([*self.term_info, *self.term_to_unsupported])
         self.terms = re.compile(rf"\b({terms})\b")
         self.fine_after = re.compile(rf"\b({terms})\s+(?:{_alternation(settings['fine_after'])})\b")
-        self.fine_before = re.compile(rf"\b(?:{_alternation(settings['fine_before'])})\b")
+        self.fine_before = _cue(settings["fine_before"])
         self.avoid_after = re.compile(
             rf"\b({terms})[\s-]+(?:{_alternation(settings['avoid_after'])})\b")
-        self.avoid_before = re.compile(rf"\b(?:{_alternation(settings['avoid_before'])})\b")
+        self.avoid_before = _cue(settings["avoid_before"])
         self.conditions = re.compile(rf"\b({_alternation(list(settings['conditions']))})\b")
         self.breaks = re.compile(rf"\b(?:{_alternation(settings['clause_breaks'])})\b")
         self.diets = [(diet, re.compile(rf"\b(?:{_alternation(words)})\b"))
@@ -203,24 +234,55 @@ class CrossCheck:
         if cut:
             span = span[:cut.start()]
         found, offset = [], start
-        for item in re.split(r"(,|\band\b|\bor\b|/)", span):
+        for item in _ITEM_SPLIT.split(span):
             if len(item.split()) > 3:
                 break
             found += [m for m in self.terms.finditer(text, offset, offset + len(item))]
             offset += len(item)
         return found
 
-    def scan_text(self, text: str) -> tuple[list[tuple[int, str, str]], set[str], str | None]:
-        """(events (position, 'avoid'|'fine', allergen), unsupported labels, last diet)."""
-        text = text.lower().replace("’", "'")
-        events: list[tuple[int, str, str]] = []
+    def _list_terms_before(self, text: str, end: int) -> list[re.Match]:
+        """Allergen words in the list right before a word with a cue after it ("fish and
+        shellfish allergy", "sesame, soy and tree nut allergy"): item by item backwards,
+        each item exactly an allergen word, from the sentence or clause start."""
+        start = max((m.end() for m in re.finditer(r"[.;!?\n]", text[:end])), default=0)
+        cut = list(self.breaks.finditer(text, start, end))
+        if cut:
+            start = cut[-1].end()
+        parts = _ITEM_SPLIT.split(text[start:end])
+        if not parts or parts[-1].strip():    # the cued word must follow a separator
+            return []
+        found: list[re.Match] = []
+        pos = end - len(parts[-1])
+        i = len(parts) - 2
+        while i >= 1:
+            sep, item = parts[i], parts[i - 1]
+            pos -= len(sep)
+            item_end, item_start = pos, pos - len(item)
+            lead = len(item) - len(item.lstrip())
+            trail = len(item) - len(item.rstrip())
+            m = self.terms.fullmatch(text, item_start + lead, item_end - trail) \
+                if item.strip() else None
+            if m is None or sep.strip() in ("(", ")", ":"):
+                break
+            found.append(m)
+            pos = item_start
+            i -= 2
+        return found
+
+    def scan_text(self, text: str) -> tuple[list[tuple[int, str, str, str]], set[str],
+                                            str | None]:
+        """(events (position, 'avoid'|'fine', allergen, word), unsupported labels, last diet)."""
+        text = text.lower().replace("\u2019", "'")
+        events: list[tuple[int, str, str, str]] = []
         unsupported: set[str] = set()
         fine_spans: list[tuple[int, int]] = []
 
         def add(kind: str, m: re.Match) -> None:
             word = m.group(1)
-            if word in self.term_to_allergen:
-                events.append((m.start(1), kind, self.term_to_allergen[word]))
+            if word in self.term_info:
+                base, allergens = self.term_info[word]
+                events.extend((m.start(1), kind, a, base) for a in allergens)
             elif kind == "avoid":
                 unsupported.add(self.term_to_unsupported[word])
 
@@ -239,6 +301,9 @@ class CrossCheck:
         for m in self.avoid_after.finditer(text):
             if not in_fine(m.start()):
                 add("avoid", m)
+                for before in self._list_terms_before(text, m.start(1)):
+                    if not in_fine(before.start()):
+                        add("avoid", before)
         for cue in self.avoid_before.finditer(text):
             if in_fine(cue.start()):
                 continue
@@ -246,7 +311,7 @@ class CrossCheck:
                 if not in_fine(m.start()):
                     add("avoid", m)
         for m in self.conditions.finditer(text):
-            events.append((m.start(), "avoid", self.s["conditions"][m.group(1)]))
+            events.append((m.start(), "avoid", self.s["conditions"][m.group(1)], m.group(1)))
 
         diet, diet_pos = None, -1
         for name, pattern in self.diets:
@@ -259,8 +324,8 @@ class CrossCheck:
         return events, unsupported, diet
 
     def scan(self, messages: list[dict[str, str]]) -> Scan:
-        """User messages in order: an avoid adds, a later 'fine' removes, last diet wins."""
-        avoid: set[str] = set()
+        """User messages in order: an avoid adds, a later 'fine' withdraws, last diet wins."""
+        avoid: dict[str, set[str]] = {}  # allergen -> the words that asked to avoid it
         mentioned: set[str] = set()
         unsupported: set[str] = set()
         diet = Diet.none.value
@@ -268,17 +333,24 @@ class CrossCheck:
             if message["role"] != "user":
                 continue
             events, found, last_diet = self.scan_text(message["content"])
-            mentioned |= {allergen for _, _, allergen in events}
+            mentioned |= {allergen for _, _, allergen, _ in events}
             # at one position a "fine" phrase wins ("eggs are fine" inside a "no" list)
-            for _, kind, allergen in sorted(events, key=lambda e: (e[0], e[1] == "fine")):
+            for _, kind, allergen, word in sorted(events, key=lambda e: (e[0], e[1] == "fine")):
                 if kind == "avoid":
-                    avoid.add(allergen)
-                else:
-                    avoid.discard(allergen)
+                    avoid.setdefault(allergen, set()).add(word)
+                elif word in self.category[allergen]:
+                    avoid.pop(allergen, None)
+                elif allergen in avoid:
+                    avoid[allergen].discard(word)
+                    if not avoid[allergen]:
+                        del avoid[allergen]
             unsupported |= found
             diet = last_diet or diet
+        words = {w for ws in avoid.values() for w in ws}
+        clarify = sorted({other for word, other in self.ambiguous.items()
+                          if word in words and other not in mentioned})
         return Scan([a for a in ALLERGEN_ORDER if a in avoid], diet, sorted(unsupported),
-                    [a for a in ALLERGEN_ORDER if a in mentioned])
+                    [a for a in ALLERGEN_ORDER if a in mentioned], clarify)
 
     def unsupported_labels(self, values: list[str], labels: list[str]) -> list[str]:
         """Map the model's free-text unsupported needs to labels where a word matches."""
@@ -294,6 +366,29 @@ class CrossCheck:
                      if m.group(1) in self.term_to_unsupported}
             out |= hits or {norm}
         return sorted(out)
+
+
+# ---------------------------------------------------------------- ZIP check
+
+# A US ZIP or ZIP+4 in free text, not part of a longer number
+ZIP_IN_TEXT = re.compile(r"(?<![\d-])(\d{5})(?:-\d{4})?(?![\d-])")
+ZIP_FULL = re.compile(r"\s*(\d{5})(?:-\d{4})?\s*")
+
+
+def normalize_zip(value: Any) -> Any:
+    """'02115-1234' -> '02115'; anything else is returned unchanged for validation."""
+    if isinstance(value, str):
+        m = ZIP_FULL.fullmatch(value)
+        if m:
+            return m.group(1)
+    return value
+
+
+def chat_zip(messages: list[dict[str, str]]) -> str | None:
+    """The last ZIP the user wrote (a later message overrides an earlier one)."""
+    found = [m.group(1) for message in messages if message["role"] == "user"
+             for m in ZIP_IN_TEXT.finditer(message["content"])]
+    return found[-1] if found else None
 
 
 # ---------------------------------------------------------------- parse
@@ -314,6 +409,11 @@ class ParseResult:
     suggested: dict[str, Any] | None = None  # the stricter request to confirm
     missing: list[str] = field(default_factory=list)
     scan: dict[str, Any] = field(default_factory=dict)
+    # allergens to ask about ("nuts": peanuts too?); in suggested, never added to avoid
+    clarify: list[str] = field(default_factory=list)
+    # where the request's ZIP came from: model | chat (the model gave none) | None
+    zip_source: str | None = None
+    notes: list[str] = field(default_factory=list)  # query and ZIP fixes made by code
     error: str | None = None
     attempts: int = 0
 
@@ -322,18 +422,72 @@ class ParseResult:
 
 
 def _validate(data: dict[str, Any]) -> tuple[ParseReply, dict[str, Any] | None]:
-    """The parsed reply and, with a ZIP, the RequestInfo. Raises ValueError when unusable."""
-    reply = ParseReply.model_validate(data)
+    """The parsed reply and, with a ZIP, the RequestInfo. Raises ValueError when unusable.
+
+    A ZIP+4 is cut to its first five digits here, so it never costs a retry.
+    """
+    reply = ParseReply.model_validate({**data, "zip": normalize_zip(data.get("zip"))})
     if reply.zip is None:
         return reply, None
     request = RequestInfo(query=reply.query, zip=reply.zip, avoid=reply.avoid, diet=reply.diet)
     return reply, request.model_dump(mode="json")
 
 
+def clean_query(prcfg: Config, query: str) -> str:
+    """The dish query without the diet words before it and the serving forms after it
+    (parse_request.yaml query_cleanup), so the catalog lookup sees the dish's name."""
+    settings = prcfg.get("query_cleanup") or {}
+    words = query.split()
+    lead = {w.lower() for w in settings.get("leading") or []}
+    trail = {w.lower() for w in settings.get("trailing") or []}
+    changed = True
+    while changed and len(words) > 1:
+        changed = False
+        for n in (2, 1):   # two-word phrases ("gluten free") first
+            if len(words) > n and " ".join(words[:n]).lower() in lead:
+                words, changed = words[n:], True
+                break
+            if len(words) > n and " ".join(words[-n:]).lower() in trail:
+                words, changed = words[:-n], True
+                break
+    return " ".join(words)
+
+
+def _request(reply: ParseReply, zip_: str | None) -> dict[str, Any] | None:
+    """RequestInfo as JSON with this ZIP, or None (no ZIP, or one RequestInfo rejects)."""
+    if zip_ is None:
+        return None
+    try:
+        return RequestInfo(query=reply.query, zip=zip_, avoid=reply.avoid,
+                           diet=reply.diet).model_dump(mode="json")
+    except ValidationError:
+        return None
+
+
+def catalog_resolver(pcfg: Config) -> Callable[[str | None], str | None]:
+    """query -> catalog dish_id (or None), with the request flow's catalog and fuzzy
+    threshold: the lookup build_result() makes."""
+    from pantrypath_pipeline.store import find_dish
+
+    db = pcfg.path(pcfg["catalog"]["sqlite_output"])
+    min_score = float(pcfg["request"]["fuzzy_min_score"])
+
+    def resolve(query: str | None) -> str | None:
+        if not query:
+            return None
+        dish = find_dish(db, query, min_score)
+        return dish.dish_id if dish else None
+    return resolve
+
+
 def parse_request(prcfg: Config, messages: list[dict[str, str]], client: LLMClient, *,
-                  variant: str = "base", template: string.Template | None = None,
-                  checker: CrossCheck | None = None) -> ParseResult:
-    """Parse one chat (one retry on an unusable reply), then cross-check it."""
+                  variant: str | None = None, template: string.Template | None = None,
+                  checker: CrossCheck | None = None,
+                  resolve: Callable[[str | None], str | None] | None = None) -> ParseResult:
+    """Parse one chat (one retry on an unusable reply), then cross-check it. `variant`
+    defaults to parse_request.yaml's default. With `resolve` (catalog_resolver), a dish
+    query the catalog doesn't know is cleaned (clean_query) when the cleaned one is known."""
+    variant = variant or prcfg["default"]
     checker = checker or CrossCheck(prcfg["cross_check"])
     prompt = render_prompt(prcfg, variant, messages, template)
     scan = checker.scan(messages)
@@ -359,6 +513,17 @@ def parse_request(prcfg: Config, messages: list[dict[str, str]], client: LLMClie
         return ParseResult("invalid", scan=asdict(scan), error=error, attempts=attempts)
 
     reply, request = parsed
+    notes: list[str] = []
+    query = reply.query
+    if resolve is not None and resolve(query) is None:
+        cleaned = clean_query(prcfg, query)
+        if cleaned != query and resolve(cleaned) is not None:
+            query = cleaned
+    if query != reply.query:
+        notes.append(f"dish query {reply.query!r} -> {query!r} for the catalog lookup")
+        reply = reply.model_copy(update={"query": query})
+        if request:
+            request = {**request, "query": query}
     fields = reply.model_dump(mode="json")
     extras = fields.pop("extras")
     model_unsupported = checker.unsupported_labels(extras["unsupported"],
@@ -368,18 +533,44 @@ def parse_request(prcfg: Config, messages: list[dict[str, str]], client: LLMClie
                  for a in scan.avoid if a not in fields["avoid"]]
     if DIET_RANK[scan.diet] > DIET_RANK[fields["diet"]]:
         conflicts.append(f"the chat says {scan.diet}, the model chose {fields['diet']}")
+    # An ambiguous word the model resolved cautiously (peanuts in avoid) needs no question
+    clarify = [a for a in scan.clarify if a not in fields["avoid"]]
+    # the suggested fix avoids both: tree nuts (the scan's own reading) and peanuts
+    conflicts += [f"the chat mentions nuts, which can mean tree nuts or {a.replace('_', ' ')}: "
+                  "the suggested fix avoids both" for a in clarify]
     # Asked, never dropped: the shopper may have said it in words the scan doesn't know
-    unmentioned = [a for a in fields["avoid"] if a not in scan.mentioned]
+    unmentioned = [a for a in fields["avoid"]
+                   if a not in scan.mentioned and a not in scan.clarify]
     conflicts += [f"the model put {a} in avoid, which the chat never mentions"
                   for a in unmentioned]
+
+    # ZIP: the chat is the authority. fields keeps the model's own answer (for scoring);
+    # the request uses the resolved one.
+    in_chat, model_zip = chat_zip(messages), fields["zip"]
+    zip_, zip_source = model_zip, "model" if model_zip else None
+    if model_zip and in_chat is None:
+        zip_, zip_source = None, None
+        notes.append(f"the model gave ZIP {model_zip}, which is not in the chat; dropped it")
+    elif in_chat and model_zip is None:
+        zip_, zip_source = in_chat, "chat"
+        notes.append(f"the model gave no ZIP; used {in_chat} from the chat")
+    elif in_chat and model_zip != in_chat:
+        conflicts.append(f"the chat gives ZIP {in_chat}, the model chose {model_zip}")
+    if zip_ != model_zip:
+        request = _request(reply, zip_)
+        if zip_ and request is None:
+            zip_source = None
+
     suggested = None
     if conflicts:
-        suggested = {**fields, "avoid": [a for a in ALLERGEN_ORDER
-                                         if a in {*fields["avoid"], *scan.avoid}],
+        suggested = {**fields, "zip": in_chat or zip_,
+                     "avoid": [a for a in ALLERGEN_ORDER
+                               if a in {*fields["avoid"], *scan.avoid, *clarify}],
                      "diet": max(fields["diet"], scan.diet, key=DIET_RANK.__getitem__)}
     missing = [] if request else ["zip"]
     status = "needs_confirmation" if conflicts else "incomplete" if missing else "ok"
     return ParseResult(status, request=request, fields=fields, extras=extras,
                        model_unsupported=model_unsupported, conflicts=conflicts,
                        unmentioned=unmentioned, suggested=suggested, missing=missing,
-                       scan=asdict(scan), attempts=attempts)
+                       scan=asdict(scan), clarify=clarify, zip_source=zip_source,
+                       notes=notes, attempts=attempts)
