@@ -1,0 +1,479 @@
+{
+  "a1": {
+    "task": "a1",
+    "cases": 180,
+    "min_group_size": 10,
+    "metrics": {
+      "allergens_captured": {
+        "style": {
+          "groups": {
+            "casual": {
+              "value": 1.0,
+              "n": 26
+            },
+            "formal": {
+              "value": 1.0,
+              "n": 27
+            },
+            "late": {
+              "value": 1.0,
+              "n": 27
+            },
+            "multi_turn": {
+              "value": 1.0,
+              "n": 23
+            },
+            "negation": {
+              "value": 1.0,
+              "n": 23
+            },
+            "synonym": {
+              "value": 1.0,
+              "n": 27
+            },
+            "typo": {
+              "value": 1.0,
+              "n": 27
+            }
+          },
+          "gap": 0.0,
+          "gap_between": [
+            "casual",
+            "typo"
+          ],
+          "too_small": []
+        },
+        "diet": {
+          "groups": {
+            "none": {
+              "value": 1.0,
+              "n": 103
+            },
+            "vegan": {
+              "value": 1.0,
+              "n": 35
+            },
+            "vegetarian": {
+              "value": 1.0,
+              "n": 42
+            }
+          },
+          "gap": 0.0,
+          "gap_between": [
+            "none",
+            "vegetarian"
+          ],
+          "too_small": []
+        },
+        "allergen": {
+          "groups": {
+            "egg": {
+              "value": 1.0,
+              "n": 16
+            },
+            "fish": {
+              "value": 1.0,
+              "n": 18
+            },
+            "gluten": {
+              "value": 1.0,
+              "n": 23
+            },
+            "milk": {
+              "value": 1.0,
+              "n": 13
+            },
+            "peanuts": {
+              "value": 1.0,
+              "n": 22
+            },
+            "sesame": {
+              "value": 1.0,
+              "n": 19
+            },
+            "shellfish": {
+              "value": 1.0,
+              "n": 22
+            },
+            "soy": {
+              "value": 1.0,
+              "n": 19
+            },
+            "tree_nuts": {
+              "value": 1.0,
+              "n": 16
+            },
+            "wheat": {
+              "value": 1.0,
+              "n": 24
+            }
+          },
+          "gap": 0.0,
+          "gap_between": [
+            "egg",
+            "wheat"
+          ],
+          "too_small": []
+        }
+      },
+      "allergen_exact": {
+        "style": {
+          "groups": {
+            "casual": {
+              "value": 0.9231,
+              "n": 26
+            },
+            "formal": {
+              "value": 0.8889,
+              "n": 27
+            },
+            "late": {
+              "value": 0.8889,
+              "n": 27
+            },
+            "multi_turn": {
+              "value": 0.913,
+              "n": 23
+            },
+            "negation": {
+              "value": 0.9565,
+              "n": 23
+            },
+            "synonym": {
+              "value": 0.7778,
+              "n": 27
+            },
+            "typo": {
+              "value": 1.0,
+              "n": 27
+            }
+          },
+          "gap": 0.2222,
+          "gap_between": [
+            "synonym",
+            "typo"
+          ],
+          "too_small": []
+        },
+        "diet": {
+          "groups": {
+            "none": {
+              "value": 0.932,
+              "n": 103
+            },
+            "vegan": {
+              "value": 0.8571,
+              "n": 35
+            },
+            "vegetarian": {
+              "value": 0.881,
+              "n": 42
+            }
+          },
+          "gap": 0.0749,
+          "gap_between": [
+            "vegan",
+            "none"
+          ],
+          "too_small": []
+        }
+      },
+      "allergen_model_recall": {
+        "allergen": {
+          "groups": {
+            "egg": {
+              "value": 1.0,
+              "n": 16
+            },
+            "fish": {
+              "value": 0.9444,
+              "n": 18
+            },
+            "gluten": {
+              "value": 1.0,
+              "n": 23
+            },
+            "milk": {
+              "value": 1.0,
+              "n": 13
+            },
+            "peanuts": {
+              "value": 0.9545,
+              "n": 22
+            },
+            "sesame": {
+              "value": 0.9474,
+              "n": 19
+            },
+            "shellfish": {
+              "value": 1.0,
+              "n": 22
+            },
+            "soy": {
+              "value": 0.9474,
+              "n": 19
+            },
+            "tree_nuts": {
+              "value": 1.0,
+              "n": 16
+            },
+            "wheat": {
+              "value": 1.0,
+              "n": 24
+            }
+          },
+          "gap": 0.0556,
+          "gap_between": [
+            "fish",
+            "wheat"
+          ],
+          "too_small": []
+        }
+      }
+    },
+    "largest_gap": {
+      "allergens_captured": {
+        "gap": 0.0,
+        "slice": "style",
+        "between": [
+          "casual",
+          "typo"
+        ]
+      },
+      "allergen_exact": {
+        "gap": 0.2222,
+        "slice": "style",
+        "between": [
+          "synonym",
+          "typo"
+        ]
+      },
+      "allergen_model_recall": {
+        "gap": 0.0556,
+        "slice": "allergen",
+        "between": [
+          "fish",
+          "wheat"
+        ]
+      }
+    },
+    "run": "/Users/tirth/Pantry-Path/ml/reports/a1/20261113T044153Z-final-a1"
+  },
+  "a2": {
+    "task": "a2",
+    "cases": 100,
+    "min_group_size": 10,
+    "metrics": {
+      "recall": {
+        "cuisine": {
+          "groups": {
+            "american": {
+              "value": 0.6887,
+              "n": 60
+            },
+            "east_se_asian": {
+              "value": 0.7059,
+              "n": 10
+            },
+            "european": {
+              "value": 0.5714,
+              "n": 10
+            },
+            "latin_american": {
+              "value": 0.6316,
+              "n": 10
+            },
+            "middle_eastern_african": {
+              "value": 0.76,
+              "n": 5
+            },
+            "south_asian": {
+              "value": 0.6522,
+              "n": 5
+            }
+          },
+          "gap": 0.1345,
+          "gap_between": [
+            "european",
+            "east_se_asian"
+          ],
+          "too_small": [
+            "middle_eastern_african",
+            "south_asian"
+          ]
+        },
+        "popularity": {
+          "groups": {
+            "high": {
+              "value": 0.7059,
+              "n": 34
+            },
+            "low": {
+              "value": 0.6403,
+              "n": 33
+            },
+            "mid": {
+              "value": 0.6806,
+              "n": 33
+            }
+          },
+          "gap": 0.0656,
+          "gap_between": [
+            "low",
+            "high"
+          ],
+          "too_small": []
+        }
+      },
+      "core_precision": {
+        "cuisine": {
+          "groups": {
+            "american": {
+              "value": 0.7389,
+              "n": 60
+            },
+            "east_se_asian": {
+              "value": 0.6744,
+              "n": 10
+            },
+            "european": {
+              "value": 0.75,
+              "n": 10
+            },
+            "latin_american": {
+              "value": 0.6216,
+              "n": 10
+            },
+            "middle_eastern_african": {
+              "value": 0.4615,
+              "n": 5
+            },
+            "south_asian": {
+              "value": 0.65,
+              "n": 5
+            }
+          },
+          "gap": 0.1284,
+          "gap_between": [
+            "latin_american",
+            "european"
+          ],
+          "too_small": [
+            "middle_eastern_african",
+            "south_asian"
+          ]
+        },
+        "popularity": {
+          "groups": {
+            "high": {
+              "value": 0.7372,
+              "n": 34
+            },
+            "low": {
+              "value": 0.6393,
+              "n": 33
+            },
+            "mid": {
+              "value": 0.7414,
+              "n": 33
+            }
+          },
+          "gap": 0.1021,
+          "gap_between": [
+            "low",
+            "mid"
+          ],
+          "too_small": []
+        }
+      },
+      "valid_profile_rate": {
+        "cuisine": {
+          "groups": {
+            "american": {
+              "value": 1.0,
+              "n": 60
+            },
+            "east_se_asian": {
+              "value": 1.0,
+              "n": 10
+            },
+            "european": {
+              "value": 1.0,
+              "n": 10
+            },
+            "latin_american": {
+              "value": 1.0,
+              "n": 10
+            },
+            "middle_eastern_african": {
+              "value": 1.0,
+              "n": 5
+            },
+            "south_asian": {
+              "value": 1.0,
+              "n": 5
+            }
+          },
+          "gap": 0.0,
+          "gap_between": [
+            "american",
+            "latin_american"
+          ],
+          "too_small": [
+            "middle_eastern_african",
+            "south_asian"
+          ]
+        },
+        "popularity": {
+          "groups": {
+            "high": {
+              "value": 1.0,
+              "n": 34
+            },
+            "low": {
+              "value": 1.0,
+              "n": 33
+            },
+            "mid": {
+              "value": 1.0,
+              "n": 33
+            }
+          },
+          "gap": 0.0,
+          "gap_between": [
+            "high",
+            "mid"
+          ],
+          "too_small": []
+        }
+      }
+    },
+    "largest_gap": {
+      "recall": {
+        "gap": 0.1345,
+        "slice": "cuisine",
+        "between": [
+          "european",
+          "east_se_asian"
+        ]
+      },
+      "core_precision": {
+        "gap": 0.1284,
+        "slice": "cuisine",
+        "between": [
+          "latin_american",
+          "european"
+        ]
+      },
+      "valid_profile_rate": {
+        "gap": 0.0,
+        "slice": "popularity",
+        "between": [
+          "high",
+          "mid"
+        ]
+      }
+    },
+    "run": "/Users/tirth/Pantry-Path/ml/reports/a2/20261112T004423Z-a2-181930"
+  }
+}
