@@ -5,6 +5,8 @@ prompt_file: prompts/parse_request.txt
 # Prompt variants for the search. examples = how many examples to show, from
 # example_set (default few_shot_examples); extra_rules: true adds the extra_rules text, or
 # names another rules text. The prompt version is '<file version>+<variant>'.
+# default: the variant used when none is given (the dev runs of 2026-11-11 chose rules_v2).
+default: rules_v2
 variants:
   base: {examples: 0, extra_rules: false}
   fewshot: {examples: 3, extra_rules: false}
@@ -94,6 +96,17 @@ rules_v2_examples:
       diet: none
       extras: {servings: null, tweaks: [], unsupported: [kosher]}
 
+# Words a chat puts around a dish name that the catalog's names don't have ("vegan sugar
+# cookies", "pulled pork sliders"): when the catalog doesn't know the model's dish query,
+# they are dropped from its start / end, and the cleaned query is used if the catalog
+# knows it (the catalog's own "vegan pancake" stays). Diet and allergens have their own
+# fields. A query is never emptied.
+query_cleanup:
+  leading: [vegan, vegetarian, plant-based, plant based, gluten-free, gluten free,
+            dairy-free, dairy free, nut-free, nut free, egg-free, egg free, keto, low-carb,
+            low carb, homemade, easy, quick, healthy]
+  trailing: [sliders, slider, platter, tray]   # not bowl or skewers: poke bowl, chicken skewers
+
 # Labels the prompt suggests for extras.unsupported (needs the diet rules can't check)
 unsupported_labels: [halal, kosher, low_sodium, diabetic, pregnancy, keto, paleo, low_carb,
                      low_fat, low_fodmap, pescatarian, mustard_allergy, celery_allergy,
@@ -103,38 +116,66 @@ unsupported_labels: [halal, kosher, low_sodium, diabetic, pregnancy, keto, paleo
 # misses an allergen the scan found, or its diet is less strict, the result needs the
 # user's confirmation. Unsupported needs found here always end up in extras.unsupported.
 cross_check:
-  # word -> allergen (plurals with -s/-es are added automatically)
+  # word -> allergen (plurals with -s/-es are added automatically). A word may stand for
+  # more than one allergen ("seafood"). Foods made from an allergen count as that allergen
+  # ("no butter" -> milk): the scan only ever asks for confirmation, so erring wide is safe.
+  # Mollusks (oyster, clam, mussel, scallop) are shellfish: diet_rules' shellfish words
+  # cover them too, so "avoid oysters" can't mark oyster sauce safe.
   allergens:
-    milk: [milk, dairy, lactose, casein, whey]
-    egg: [egg]
-    fish: [fish, salmon, tuna, cod, anchovy]
-    shellfish: [shellfish, shrimp, prawn, crab, lobster, crustacean, scallop, clam, oyster,
-                mussel]
+    milk: [milk, dairy, lactose, casein, whey, butter, buttermilk, cheese, cream, yogurt,
+           yoghurt, ghee]
+    egg: [egg, mayo, mayonnaise]
+    fish: [fish, seafood, salmon, tuna, cod, anchovy]
+    shellfish: [shellfish, seafood, shrimp, prawn, crab, lobster, crustacean, scallop, clam,
+                oyster, mussel]
     tree_nuts: [tree nut, nut, almond, cashew, walnut, pecan, pistachio, hazelnut, macadamia]
     peanuts: [peanut, peanut butter, groundnut]
     wheat: [wheat, wheat flour]
     soy: [soy, soya, soybean]
     sesame: [sesame, sesame seed, tahini]
     gluten: [gluten]
+  # Words that name the whole allergen. "X is fine" with one of these withdraws the
+  # allergen; with a narrower word it withdraws only that word, so "allergic to shrimp but
+  # crab is fine" still avoids shellfish.
+  category_words:
+    milk: [milk, dairy]
+    egg: [egg]
+    fish: [fish, seafood]
+    shellfish: [shellfish, seafood, crustacean]
+    tree_nuts: [tree nut, nut]
+    peanuts: [peanut]
+    wheat: [wheat]
+    soy: [soy, soya]
+    sesame: [sesame]
+    gluten: [gluten]
+  # An avoided word that leaves another allergen open ("nuts": tree nuts, peanuts or both).
+  # Unless the chat mentions that allergen, the result needs confirmation (the allergen is
+  # listed under `clarify` and in the suggested request); it is never added to avoid.
+  ambiguous:
+    nut: peanuts
   # Words that mean "avoid this allergen" on their own
   conditions:
     celiac: gluten
     coeliac: gluten
-  # An avoid phrase: cue before a list of words ("allergic to eggs and soy"), or a word
-  # followed by a suffix ("nut-free", "egg allergy")
-  avoid_before: [allergic to, allergy to, allergies to, intolerant to, "no", without, avoid,
-                 avoiding, exclude, leave out, "can't have", cannot have, "can't eat",
-                 cannot eat, "don't eat", do not eat, free of, hold the, anything with]
-  avoid_after: [free, allergy, allergies, intolerance]
+  # An avoid phrase: cue before a list of words ("allergic to eggs and soy", "allergies:
+  # milk, egg"), or a word followed by a suffix ("nut-free", "egg allergy")
+  avoid_before: [allergic to, allergy to, allergies to, "allergy:", "allergies:",
+                 "allergens:", intolerant to, intolerant of, sensitive to, sensitivity to,
+                 "no", without, avoid, avoiding, exclude, leave out, "can't have",
+                 cannot have, "can't eat", cannot eat, "can't do", cannot do,
+                 "can't tolerate", cannot tolerate, "don't eat", do not eat, free of,
+                 hold the, anything with, nothing with, stay away from, but not]
+  avoid_after: [free, allergy, allergies, intolerance, intolerant, sensitivity]
   # "Fine" phrases cancel an earlier avoid ("nuts are fine", "not allergic to eggs")
   fine_before: [fine with, ok with, okay with, can eat, can have, no problem with,
                 not allergic to]
   fine_after: [is fine, are fine, is ok, are ok, is okay, are okay, is no problem]
   # A list after a cue ends at a clause like this, or at an item of more than 3 words
-  clause_breaks: [but, though, although, except, so, because]
+  clause_breaks: [but, though, although, except, so, because, if]
   # Diets, strictest last; "not vegan" does not count
   diets:
-    vegetarian: [vegetarian, no meat, "don't eat meat", meatless, veggie only]
+    vegetarian: [vegetarian, no meat, nothing with meat, "don't eat meat", meatless,
+                 veggie only]
     vegan: [vegan, plant-based, plant based]
   diet_negations: ["not", "isn't", "no longer", "not really"]
   # Needs the diet rules can't check: label -> words (anywhere in the chat)

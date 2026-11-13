@@ -77,9 +77,50 @@ def test_rules_v2_variant(prcfg):
     ("No dairy, eggs are fine.", ["milk"]),
     ("I'm not allergic to eggs.", []),
     ("I want egg drop soup", []),
+    # the paraphrase perturbation's wording (sensitivity run 20261112T163102Z)
+    ("nothing with milk, tree nuts and peanuts if you can.", ["milk", "tree_nuts", "peanuts"]),
+    ("No soy if possible, I live in 02115", ["soy"]),
+    # REVIEW-FIXES phrasings (unit tests only: never added to an evaluation set)
+    ("I'm allergic to shrimp but crab is fine", ["shellfish"]),  # a narrower "fine" word
+    ("allergic to tree nuts (cashews especially)", ["tree_nuts"]),
+    ("allergies: milk, egg", ["milk", "egg"]),
+    ("Severe allergy: walnuts", ["tree_nuts"]),
+    ("I'm lactose intolerant", ["milk"]),
+    ("no seafood", ["fish", "shellfish"]),
+    ("no butter or cheese please", ["milk"]),
+    ("I can't do gluten", ["gluten"]),
+    ("I can eat eggs but not milk", ["milk"]),
+    ("no peanut butter", ["peanuts"]),
+    ("seafood is fine, no eggs", ["egg"]),
+    ("no-bake cheesecake please", []),
+    # mollusks are shellfish, as in diet_rules (so oyster sauce can't pass as safe)
+    ("avoid oysters and clams", ["shellfish"]),
+    # the four realistic chats removed from the realistic set for independence
+    # (evalsets.yaml a1.realistic_excluded): their wording matches the fixes above
+    ("Need stuff for banana bread. walnut allergy here. near 30307 please", ["tree_nuts"]),
+    ("Butter chicken near 48104 for 3. Tree nut allergy in the family, cashews especially, "
+     "those are often in the sauce.", ["tree_nuts"]),
+    ("spinach artichoke dip for game night. Lactose intolerant here. 85004", ["milk"]),
+    ("vegan pancakes, zip 94704, also nut-free since my roommate has a nut allergy",
+     ["tree_nuts"]),
 ])
 def test_allergen_scan(check, text, avoid):
     assert check.scan(user(text)).avoid == avoid
+
+
+def test_mollusks_match_the_diet_rules_shellfish_words():
+    from pantrypath_core.diet_rules import ALLERGEN_WORDS, Allergen
+
+    words = set(config.load("parse_request")["cross_check"]["allergens"]["shellfish"])
+    assert {"oyster", "clam", "mussel", "scallop"} <= words
+    assert words - {"seafood"} <= set(ALLERGEN_WORDS[Allergen.shellfish])
+
+
+def test_nuts_leaves_peanuts_to_ask_about(check):
+    assert check.scan(user("I have a nut allergy")).clarify == ["peanuts"]
+    assert check.scan(user("no nuts, peanuts are ok though")).clarify == []
+    assert check.scan(user("no tree nuts")).clarify == []
+    assert check.scan(user("I have a nut allergy")).avoid == ["tree_nuts"]  # never added
 
 
 def test_later_messages_override_earlier_ones(check):
@@ -91,6 +132,7 @@ def test_later_messages_override_earlier_ones(check):
 
 @pytest.mark.parametrize(("text", "diet"), [
     ("I'm vegan.", "vegan"), ("No meat please.", "vegetarian"), ("I'm not vegan", "none"),
+    ("nothing with meat if you can.", "vegetarian"),
     ("I'm vegetarian, actually plant-based", "vegan"), ("chili for 4", "none"),
 ])
 def test_diet_scan(check, text, diet):
@@ -174,15 +216,112 @@ def test_missing_zip_is_incomplete(prcfg):
     assert result.request is None and result.fields["query"] == "pad thai"
 
 
-def test_an_invalid_zip_is_retried_once(prcfg):
-    replies = iter([answer(zip="02115-1234"), answer()])
-    client = ScriptedClient(lambda p: next(replies))
+def test_a_nut_allergy_needs_confirmation_about_peanuts(prcfg):
+    result = parse_request(prcfg, user("pad thai 02115, I have a nut allergy"),
+                           ScriptedClient(lambda p: answer(avoid=["tree_nuts"])))
+    assert result.status == "needs_confirmation" and result.clarify == ["peanuts"]
+    assert result.request["avoid"] == ["tree_nuts"]  # the model's answer is not changed
+    assert result.suggested["avoid"] == ["tree_nuts", "peanuts"]  # the fix lists both
+    assert result.conflicts == ["the chat mentions nuts, which can mean tree nuts or peanuts: "
+                                "the suggested fix avoids both"]
+
+
+def test_a_nut_allergy_the_model_missed_is_suggested_as_both(prcfg):
+    result = parse_request(prcfg, user("pad thai 02115, I have a nut allergy"),
+                           ScriptedClient(lambda p: answer(avoid=[])))
+    assert result.suggested["avoid"] == ["tree_nuts", "peanuts"]
+    assert len(result.conflicts) == 2  # the missed tree nuts, and the nuts question
+    assert result.suggested["avoid"] == ["tree_nuts", "peanuts"]
+    # the model already avoids both: nothing to ask, and peanuts is not "unmentioned"
+    both = parse_request(prcfg, user("pad thai 02115, I have a nut allergy"),
+                         ScriptedClient(lambda p: answer(avoid=["tree_nuts", "peanuts"])))
+    assert both.status == "ok" and both.unmentioned == []
+
+
+def test_zip_plus_four_is_cut_without_a_retry(prcfg):
+    client = ScriptedClient(lambda p: answer(zip="02115-1234"))
     result = parse_request(prcfg, user("pad thai 02115-1234"), client)
+    assert result.status == "ok" and result.attempts == 1
+    assert result.request["zip"] == "02115" and result.zip_source == "model"
+
+
+def test_an_invalid_zip_is_retried_once(prcfg):
+    replies = iter([answer(zip="2115"), answer()])
+    client = ScriptedClient(lambda p: next(replies))
+    result = parse_request(prcfg, user("pad thai 02115"), client)
     assert result.status == "ok" and result.attempts == 2
     assert "could not be used" in client.prompts[1]
+
+
+def test_a_zip_missing_from_the_chat_is_dropped(prcfg):
+    result = parse_request(prcfg, user("pad thai, no peanuts"),
+                           ScriptedClient(lambda p: answer(avoid=["peanuts"])))
+    assert result.status == "incomplete" and result.request is None
+    assert result.fields["zip"] == "02115" and result.notes  # the model's answer is kept
+
+
+def test_a_zip_the_model_left_out_comes_from_the_chat(prcfg):
+    result = parse_request(prcfg, user("pad thai near 10027"),
+                           ScriptedClient(lambda p: answer(zip=None)))
+    assert result.status == "ok" and result.request["zip"] == "10027"
+    assert result.zip_source == "chat" and result.fields["zip"] is None
+
+
+def test_a_different_zip_needs_confirmation(prcfg):
+    result = parse_request(prcfg, user("pad thai near 10027"), ScriptedClient(lambda p: answer()))
+    assert result.status == "needs_confirmation" and result.suggested["zip"] == "10027"
+    assert any("ZIP" in c for c in result.conflicts)
 
 
 def test_two_unusable_replies_are_invalid(prcfg):
     client = ScriptedClient(lambda p: "The LLM reply is not a JSON object")
     result = parse_request(prcfg, user("pad thai 02115"), client)
     assert result.status == "invalid" and result.attempts == 2 and "JSON" in result.error
+
+
+@pytest.mark.parametrize(("text", "avoid"), [
+    ("lentil soup, milk and egg allergy", ["milk", "egg"]),
+    ("crab cakes for 4, sesame, soy and tree nut allergy", ["tree_nuts", "soy", "sesame"]),
+    ("risotto. peanut and shellfish allergies here", ["shellfish", "peanuts"]),
+    ("peanut noodles, wheat allergy", ["wheat"]),        # a dish word before the list
+    ("milk and egg allergy but nuts are fine", ["milk", "egg"]),
+])
+def test_a_list_before_a_cue_counts_every_item(check, text, avoid):
+    scan = check.scan(user(text))
+    assert sorted(scan.avoid) == sorted(avoid) and set(avoid) <= set(scan.mentioned)
+
+
+def test_a_correct_parse_of_a_list_before_a_cue_needs_no_confirmation(prcfg):
+    result = parse_request(prcfg, user("crab cakes 02115, sesame and soy allergy"),
+                           ScriptedClient(lambda p: answer(avoid=["soy", "sesame"])))
+    assert result.status == "ok" and result.unmentioned == []
+
+
+@pytest.mark.parametrize(("query", "clean"), [
+    ("vegan brownies", "brownies"), ("gluten free dairy-free muffins", "muffins"),
+    ("beef sliders", "beef"), ("pad thai", "pad thai"), ("vegan", "vegan"),
+    ("poke bowl", "poke bowl"), ("chicken skewers", "chicken skewers"),
+])
+def test_diet_words_and_serving_forms_leave_the_dish_query(prcfg, query, clean):
+    from pantrypath_ml.parse_request import clean_query
+
+    assert clean_query(prcfg, query) == clean
+
+
+def test_the_cleaned_query_is_used_only_when_the_catalog_knows_it_and_not_the_original(prcfg):
+    known = {"brownies": "brownie", "vegan pancakes": "vegan-pancake", "pancakes": "pancake"}
+    resolve = known.get
+
+    def run(query, resolve=resolve):
+        return parse_request(prcfg, user(f"{query} near 02115"), ScriptedClient(
+            lambda p: answer(query=query, diet="vegan")), resolve=resolve)
+    result = run("vegan brownies")         # unknown as asked, known cleaned
+    assert result.request["query"] == "brownies" and result.fields["query"] == "brownies"
+    assert result.request["diet"] == "vegan"
+    assert "'vegan brownies' -> 'brownies'" in result.notes[0]
+    result = run("vegan pancakes")         # the catalog's own dish: kept
+    assert result.request["query"] == "vegan pancakes" and result.notes == []
+    result = run("vegan mystery stew")     # unknown either way: the model's query stays
+    assert result.request["query"] == "vegan mystery stew"
+    result = run("vegan brownies", resolve=None)   # no catalog: no cleanup
+    assert result.request["query"] == "vegan brownies"
