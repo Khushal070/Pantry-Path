@@ -2,10 +2,10 @@ name: Model pipeline
 
 # Unit tests -> small A1/A2 evaluation on a seeded DEV sample on the runner's CPU (Ollama)
 # -> validation and bias gates -> champion comparison against the committed full final
-# report. Release, on a push to main or model-pipeline that changed registry/champion.json
-# or serving/: push the committed champion's image to Artifact Registry, deploy a new Cloud
-# Run revision, smoke-test it and roll back automatically if it fails. Notifications on
-# failure, failed gates and completion.
+# report. Release, on a push to main or model-pipeline that changed registry/champion.json,
+# serving/ or this workflow: push the committed champion's image to Artifact Registry,
+# deploy a new Cloud Run revision, smoke-test it and roll back automatically if it fails.
+# Notifications on failure, failed gates and completion.
 #
 # CI never reads the held-out test or realistic splits (running them on every push would
 # make them tuning data). The held-out numbers come from `select final`, run once by hand;
@@ -190,6 +190,7 @@ jobs:
     outputs:
       champion: ${{ steps.diff.outputs.champion }}
       serving: ${{ steps.diff.outputs.serving }}
+      workflow: ${{ steps.diff.outputs.workflow }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -204,18 +205,21 @@ jobs:
           }
           echo "champion=$(changed ml/registry/champion.json)" >> "$GITHUB_OUTPUT"
           echo "serving=$(changed ml/serving/)" >> "$GITHUB_OUTPUT"
+          echo "workflow=$(changed .github/workflows/model-pipeline.yml)" >> "$GITHUB_OUTPUT"
 
-  # Deploys the committed champion (registry/champion.json) when it or the model server
-  # changed. Not gated on `evaluate`: that job judges the proposed setting, and the champion
-  # passed its own `select final` before it was committed. Never on pull requests or manual
-  # runs. Both branches deploy the same Cloud Run service.
+  # Deploys the committed champion (registry/champion.json) when it, the model server or
+  # this workflow changed (so a fix to the release steps is tested by a release). Not gated
+  # on `evaluate`: that job judges the proposed setting, and the champion passed its own
+  # `select final` before it was committed. Never on pull requests or manual runs. Both
+  # branches deploy the same Cloud Run service.
   release:
     needs: [test, changes]
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/model-pipeline') &&
       vars.GCP_PROJECT_ID != '' &&
-      (needs.changes.outputs.champion == 'true' || needs.changes.outputs.serving == 'true')
+      (needs.changes.outputs.champion == 'true' || needs.changes.outputs.serving == 'true' ||
+       needs.changes.outputs.workflow == 'true')
     # one deploy (and its rollback) at a time across both branches
     concurrency:
       group: model-server-release
@@ -243,6 +247,13 @@ jobs:
           cache-dependency-path: ml/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
+      # The smoke test resolves A1 dishes against the catalog; pulled before the deploy so a
+      # failed pull stops the release before anything changes
+      - name: Pull the dish catalog (public DVC remote)
+        working-directory: .
+        run: |
+          dvc pull data-pipeline/data/processed/dish_profiles.json.dvc \
+            data-pipeline/data/processed/pantrypath.sqlite.dvc
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -281,8 +292,11 @@ jobs:
           MODEL_SERVER_URL: ${{ steps.deploy.outputs.url }}
           MODEL_SERVER_TOKEN: ${{ steps.token.outputs.id_token }}
         run: python serving/latency_check.py --smoke | tee "$RUNNER_TEMP/smoke.json"
+      # The champion record is restored only if this release pushed a new one
       - name: Roll back after a failed smoke test
         if: failure() && steps.smoke.outcome == 'failure'
+        env:
+          RESTORE_CHAMPION: ${{ needs.changes.outputs.champion == 'true' && '1' || '0' }}
         run: bash serving/rollback.sh
 
   notify:
