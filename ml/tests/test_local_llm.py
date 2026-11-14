@@ -250,7 +250,18 @@ def test_retry_on_5xx_and_network_errors(cfg, http):
 def test_a_read_timeout_is_retried_once(cfg, http):
     fake = http([requests.ReadTimeout("slow"), requests.ReadTimeout("slow"),
                  (200, openai_payload('{"dish": "ramen"}'))])
-    with pytest.raises(LLMError, match="no reply within 300s, 2 times"):
+    timeout = cfg["client"]["timeout_s"]
+    with pytest.raises(LLMError, match=f"no reply within {timeout}s, 2 times"):
+        qwen(cfg).complete_json("prompt", SCHEMA, purpose="t")
+    assert len(fake.requests) == 2
+
+
+def test_a_server_timeout_counts_as_a_read_timeout(cfg, http):
+    # Cloud Run's 504 comes before the client's own timeout; it gets the same two tries
+    fake = http([(504, {"error": "upstream request timeout"}),
+                 (504, {"error": "upstream request timeout"}),
+                 (200, openai_payload('{"dish": "ramen"}'))])
+    with pytest.raises(LLMError, match=r"server's request timeout \(HTTP 504\), 2 times"):
         qwen(cfg).complete_json("prompt", SCHEMA, purpose="t")
     assert len(fake.requests) == 2
 

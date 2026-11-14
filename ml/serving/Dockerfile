@@ -3,7 +3,20 @@
 # nothing. MODEL comes from the champion record (registry.py passes it):
 #   docker build --build-arg MODEL=qwen3:4b-q4_K_M -t pantrypath-model-server ml/serving
 ARG OLLAMA_VERSION=0.40.15
-FROM ollama/ollama:${OLLAMA_VERSION}
+
+# Cloud Run has no GPU: take the Ollama binary and its CPU backends from the official
+# image and leave its GPU runtimes behind (CUDA/ROCm/Vulkan, MLX-CUDA with cuDNN and the
+# CUDA headers: about 3.6 GB on arm64, 2 GB more on amd64)
+FROM ollama/ollama:${OLLAMA_VERSION} AS ollama
+RUN rm -rf /usr/lib/ollama/cuda_* /usr/lib/ollama/mlx_cuda_* /usr/lib/ollama/include \
+           /usr/lib/ollama/rocm* /usr/lib/ollama/vulkan*
+
+FROM ubuntu:24.04
+# ca-certificates: the model pull below; the CPU backends need only glibc and libstdc++
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ollama /usr/bin/ollama /usr/bin/ollama
+COPY --from=ollama /usr/lib/ollama /usr/lib/ollama
 
 ARG MODEL
 # Keep the model loaded between requests, one request at a time (Cloud Run concurrency 1),
@@ -20,5 +33,5 @@ RUN test -n "$MODEL" || (echo "build with --build-arg MODEL=<ollama model id>" &
     ollama pull "$MODEL" && kill "$pid"
 
 EXPOSE 8080
-ENTRYPOINT ["/bin/ollama"]
+ENTRYPOINT ["/usr/bin/ollama"]
 CMD ["serve"]
