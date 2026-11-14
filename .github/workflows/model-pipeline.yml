@@ -2,9 +2,10 @@ name: Model pipeline
 
 # Unit tests -> small A1/A2 evaluation on a seeded DEV sample on the runner's CPU (Ollama)
 # -> validation and bias gates -> champion comparison against the committed full final
-# report -> on main only: push to Artifact Registry, deploy a new Cloud Run revision,
-# smoke-test it and roll back automatically if it fails. Notifications on failure, failed
-# gates and completion.
+# report. Release, on a push to main or model-pipeline that changed registry/champion.json
+# or serving/: push the committed champion's image to Artifact Registry, deploy a new Cloud
+# Run revision, smoke-test it and roll back automatically if it fails. Notifications on
+# failure, failed gates and completion.
 #
 # CI never reads the held-out test or realistic splits (running them on every push would
 # make them tuning data). The held-out numbers come from `select final`, run once by hand;
@@ -38,6 +39,7 @@ on:
   pull_request:
     branches:
       - main
+      - model-pipeline
     paths:
       - "ml/**"
       - ".github/workflows/model-pipeline.yml"
@@ -48,6 +50,8 @@ on:
       - "data-pipeline/config/**"
       - "data-pipeline/requirements*"
       - "data/golden/**"
+  # By hand from the Actions tab, on any branch; never releases (release needs a push to main)
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -177,15 +181,52 @@ jobs:
             ml/reports/final/
             ml/registry/champion*.json
 
-  release:
-    needs: evaluate
+  # What the pushed commit changed against its parent (the first parent for a merge)
+  changes:
     if: >-
-      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
-      needs.evaluate.outputs.promoted == 'true' && vars.GCP_PROJECT_ID != ''
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/model-pipeline')
+    runs-on: ubuntu-latest
+    outputs:
+      champion: ${{ steps.diff.outputs.champion }}
+      serving: ${{ steps.diff.outputs.serving }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Compare with the previous commit
+        id: diff
+        shell: bash
+        run: |
+          changed() {  # true when the path changed (or there is no previous commit)
+            if ! git rev-parse -q --verify HEAD^ >/dev/null; then echo true; return; fi
+            git diff --quiet HEAD^ HEAD -- "$1" && echo false || echo true
+          }
+          echo "champion=$(changed ml/registry/champion.json)" >> "$GITHUB_OUTPUT"
+          echo "serving=$(changed ml/serving/)" >> "$GITHUB_OUTPUT"
+
+  # Deploys the committed champion (registry/champion.json) when it or the model server
+  # changed. Not gated on `evaluate`: that job judges the proposed setting, and the champion
+  # passed its own `select final` before it was committed. Never on pull requests or manual
+  # runs. Both branches deploy the same Cloud Run service.
+  release:
+    needs: [test, changes]
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/model-pipeline') &&
+      vars.GCP_PROJECT_ID != '' &&
+      (needs.changes.outputs.champion == 'true' || needs.changes.outputs.serving == 'true')
+    # one deploy (and its rollback) at a time across both branches
+    concurrency:
+      group: model-server-release
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ml
+        # -eo pipefail: a failed smoke test or deploy must fail its step through `| tee`
+        # and `| tail`, or the rollback below never runs
+        shell: bash
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION }}
@@ -202,10 +243,6 @@ jobs:
           cache-dependency-path: ml/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
-      - uses: actions/download-artifact@v7
-        with:
-          name: model-evaluation
-          path: ml
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -216,7 +253,9 @@ jobs:
         run: |
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           echo "uri=$(python -m pantrypath_ml.registry push-image --tag "$GITHUB_SHA" | tail -n 1)" >> "$GITHUB_OUTPUT"
+      # Only a new champion gets a new version: rollback.sh restores the second newest
       - name: Push the champion record
+        if: needs.changes.outputs.champion == 'true'
         run: python -m pantrypath_ml.registry push-champion
       - name: Deploy a new Cloud Run revision (the previous one stays for rollback)
         id: deploy

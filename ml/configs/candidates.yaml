@@ -38,7 +38,9 @@ client:
   # Ollama context window, sent with every request as options.num_ctx. A plain
   # `ollama serve` uses a short default and silently cuts long prompts (the A2 prompt).
   context_length: 8192
-  timeout_s: 300              # a 4B model on CPU can take a while per reply
+  # A 4B model on CPU can take a while per reply. Above Cloud Run's timeoutSeconds (600 in
+  # serving/cloudrun.yaml), so the server's timeout always fires first.
+  timeout_s: 620
   max_attempts: 4             # tries per call on 429, server and network errors
   # A read timeout is tried this many times at most: at temperature 0 the same prompt
   # usually runs as long again

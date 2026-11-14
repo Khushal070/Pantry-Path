@@ -151,7 +151,8 @@ def _post_json(url: str, *, body: dict, model: str, settings: dict[str, Any],
     """POST with retries on 429, 5xx and network errors; other errors fail at once.
 
     A read timeout (the server took the request but no reply came in time) is tried at
-    most read_timeout_attempts times, within max_attempts.
+    most read_timeout_attempts times, within max_attempts. So is an HTTP 504: Cloud Run's
+    request timeout (serving/cloudrun.yaml) is below timeout_s, so it fires first.
     """
     attempts = int(settings.get("max_attempts", 4))
     read_timeout_attempts = int(settings.get("read_timeout_attempts", attempts))
@@ -168,17 +169,29 @@ def _post_json(url: str, *, body: dict, model: str, settings: dict[str, Any],
     def attempt() -> dict:
         nonlocal read_timeouts
         timeout = float(settings.get("timeout_s", 300))
+
+        def give_up(within: str) -> LLMError | None:
+            """Count one timeout; the error to raise once there were too many."""
+            nonlocal read_timeouts
+            read_timeouts += 1
+            if read_timeouts < read_timeout_attempts:
+                return None
+            return LLMError(f"Model server at {url} sent no reply within {within}, "
+                            f"{read_timeouts} times; the reply may be running away "
+                            "(check client.max_output_tokens)")
+
         try:
             resp = requests.post(url, json=body, timeout=timeout, **extra)
         except requests.ReadTimeout as exc:
-            read_timeouts += 1
-            if read_timeouts >= read_timeout_attempts:
-                raise LLMError(f"Model server at {url} sent no reply within {timeout:g}s, "
-                               f"{read_timeouts} times; the reply may be running away "
-                               "(check client.max_output_tokens)") from exc
+            if err := give_up(f"{timeout:g}s"):
+                raise err from exc
             raise _TransientError(f"network error: {exc}") from exc
         except (requests.Timeout, requests.ConnectionError) as exc:
             raise _TransientError(f"network error: {exc}") from exc
+        if resp.status_code == 504:
+            if err := give_up("the server's request timeout (HTTP 504)"):
+                raise err
+            raise _TransientError(f"HTTP 504: {_snippet(resp.text)}")
         if resp.status_code == 429 or resp.status_code >= 500:
             raise _TransientError(f"HTTP {resp.status_code}: {_snippet(resp.text)}")
         if resp.status_code in (401, 403):

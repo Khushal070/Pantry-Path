@@ -19,7 +19,7 @@ spec:
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
       containerConcurrency: 1                   # one generation at a time per instance
-      timeoutSeconds: 300
+      timeoutSeconds: 600                       # a slow CPU reply; below the client's timeout_s
       serviceAccountName: ${RUN_SERVICE_ACCOUNT}
       containers:
         - image: ${IMAGE}

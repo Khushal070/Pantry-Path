@@ -1,18 +1,18 @@
-"""Latency check against the deployed model server (A1 per request, A2 per dish).
+"""Latency check against the deployed model server (A1 per request, A2 per dish, A3 per answer).
 
-Runs a few A1 and A2 dev items through the champion's settings against MODEL_SERVER_URL,
+Runs a few A1, A2 and A3 dev items through the champion's settings against MODEL_SERVER_URL,
 with a fresh cache so every call is real, and compares the mean latency with
-gates.yaml `latency` (p95 is reported too). A private Cloud Run service needs an identity
-token in MODEL_SERVER_TOKEN:
+gates.yaml `latency` (p95 is reported too; A3 has no limit there, so its latency is only
+reported). A private Cloud Run service needs an identity token in MODEL_SERVER_TOKEN:
 
     export MODEL_SERVER_URL=https://<service-url>
     export MODEL_SERVER_TOKEN="$(gcloud auth print-identity-token)"
-    python ml/serving/latency_check.py [--a1 10] [--a2 3]
+    python ml/serving/latency_check.py [--a1 10] [--a2 3] [--a3 3]
     python ml/serving/latency_check.py --smoke      # after a deploy (CI)
 
---smoke checks that the deployed server works (3 A1 chats, 1 A2 dish, every reply valid)
-and only reports latency; it exits 1 if a reply is unusable, so CI can roll back. The
-default mode also fails when the mean latency is over gates.yaml `latency`.
+--smoke checks that the deployed server works (3 A1 chats, 1 A2 dish, 1 A3 answer, every
+reply valid) and only reports latency; it exits 1 if a reply is unusable, so CI can roll
+back. The default mode also fails when the mean latency is over gates.yaml `latency`.
 
 The first request after scaling from zero includes the cold start; it is warmed up first
 and not counted.
@@ -23,7 +23,7 @@ import json
 import logging
 import sys
 
-from pantrypath_ml import config, evaluate_a1, evaluate_a2
+from pantrypath_ml import config, evaluate_a1, evaluate_a2, evaluate_a3
 from pantrypath_ml.local_llm import RecordingClient, cached_client, get_candidate, load_candidates
 from pantrypath_ml.reporting import new_run_id
 from pantrypath_ml.select import CHAMPION, read_record
@@ -47,11 +47,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--a1", type=int, default=10, help="A1 dev cases")
     parser.add_argument("--a2", type=int, default=3, help="A2 dev dishes")
+    parser.add_argument("--a3", type=int, default=3, help="A3 dev cases")
     parser.add_argument("--smoke", action="store_true",
-                        help="3 A1 + 1 A2 items; fail only on unusable replies")
+                        help="3 A1 + 1 A2 + 1 A3 items; fail only on unusable replies")
     args = parser.parse_args(argv)
     if args.smoke:
-        args.a1, args.a2 = 3, 1
+        args.a1, args.a2, args.a3 = 3, 1, 1
     setup_logging()
     if not secret("MODEL_SERVER_URL"):
         parser.error("set MODEL_SERVER_URL to the deployed server")
@@ -70,15 +71,26 @@ def main(argv: list[str] | None = None) -> int:
                          variant=champion["a2"].get("prompt_variant"),
                          overrides={k: champion["a2"][k] for k in ("temperature", "think")},
                          **common)
+    a3 = evaluate_a3.run(champion["candidate"], "dev", limit=args.a3,
+                         variant=champion["a3"]["prompt_variant"],
+                         overrides={k: champion["a3"][k] for k in ("temperature", "think")},
+                         **common)
     result = {
         "a1": {"mean_s": a1["latency_mean_s"], "p95_s": a1["latency_p95_s"],
                "max_s": limits["a1_max_s"]},
         "a2": {"mean_s": a2["latency_mean_s"], "p95_s": a2["latency_p95_s"],
                "max_s": limits["a2_max_s"]},
+        "a3": {"mean_s": a3["latency_mean_s"], "p95_s": a3["latency_p95_s"],
+               "max_s": limits.get("a3_max_s")},
     }
     result["a1"]["valid"] = a1["valid_json_rate"] == 1.0
     result["a2"]["valid"] = a2["valid_profile_rate"] == 1.0
+    result["a3"]["valid"] = a3["valid_json_rate"] == 1.0
     for r in result.values():
+        if r["max_s"] is None:  # no limit in gates.yaml: reported only
+            r["latency_ok"] = None
+            r["passed"] = r["valid"]
+            continue
         r["latency_ok"] = r["mean_s"] is not None and r["mean_s"] <= r["max_s"]
         r["passed"] = r["valid"] and (args.smoke or r["latency_ok"])
     result["mode"] = "smoke" if args.smoke else "latency"

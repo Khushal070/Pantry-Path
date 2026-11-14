@@ -1,0 +1,3 @@
+# The image copies nothing from this folder; keep the build context to the Dockerfile
+*
+!Dockerfile
