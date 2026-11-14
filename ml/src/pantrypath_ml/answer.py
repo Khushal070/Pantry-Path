@@ -2,7 +2,7 @@
 
 A hybrid. Code decides the shopping list (`decide`): each ingredient's status (buy /
 substitute / check the label / skip), its product and store from result.json, and its
-substitute from the vetted table (configs/substitutes.yaml), each substitute checked
+substitute from the audited table (configs/substitutes.yaml), each substitute checked
 against the shopper's allergens and diet. The model only writes the summary, the steps
 and the quantities around those fixed decisions, mentioning only the given items. Nobody
 sets or changes a verdict: verdicts come only from diet_rules.assess inside the data
@@ -459,9 +459,9 @@ def decide(result: dict[str, Any], facts: Facts, screen: SubstituteCheck,
     """Each ingredient's status, product, store and substitute, in result.json order:
     - a safe product: buy it, at the nearest store that has one;
     - else, if the ingredient itself conflicts with the avoid list or diet (butter for a
-      milk-avoider), a label can't fix it: a vetted substitute, else skip (common) or an
+      milk-avoider), a label can't fix it: an audited substitute, else skip (common) or an
       open substitute (core);
-    - else check the label when some products couldn't be verified, then a vetted
+    - else check the label when some products couldn't be verified, then an audited
       substitute, then skip (common) or an open substitute (core).
     Every decision passes check() on its own."""
     distance = {s["store_id"]: s.get("distance_miles") or 0.0

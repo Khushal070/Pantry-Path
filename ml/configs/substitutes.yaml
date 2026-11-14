@@ -1,7 +1,8 @@
 # A3 substitution table: for an ingredient with no safe product, the substitutes code may
-# suggest, in order of preference. Written by hand from general cooking knowledge, by
-# food family (dairy, egg, wheat and gluten, meat, fish and shellfish, nuts, peanuts,
-# sesame, soy), not from any evaluation set's dishes. Teammates: review and extend.
+# suggest, in order of preference. Drafted for this project, by food family (dairy, egg,
+# wheat and gluten, meat, fish and shellfish, nuts, peanuts, sesame, soy), not from any
+# evaluation set's dishes; audited automatically against Open Food Facts
+# (audit_substitutes), not yet reviewed by a person. Teammates: review and extend.
 #
 # Every candidate lists what it may contain (`contains`, required, [] for nothing):
 # allergens (milk, egg, fish, shellfish, tree_nuts, peanuts, wheat, soy, sesame, gluten)
