@@ -17,7 +17,7 @@
     "final_bias_run": "20261112T004423Z-a2-181930"
   },
   "a3": {
-    "prompt_variant": "hybrid_swaps",
+    "prompt_variant": "model_list",
     "temperature": 0.0,
     "think": false,
     "dev_run": "20261113T024012Z-a3-12165d"
