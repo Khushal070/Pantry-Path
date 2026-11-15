@@ -1,0 +1,11 @@
+# Model pipeline notifications, sent with the data pipeline's alerts.send_alert (always
+# logged; emailed when ALERT_SMTP_PASSWORD is set) and, when SLACK_WEBHOOK_URL is set, to
+# Slack. The recipient and sender come from ALERT_EMAIL_TO and ALERT_SMTP_USER (GitHub
+# secrets in CI); none are stored here.
+alerts:
+  email_enabled: true
+  email_to: null
+  smtp_user: null
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  subject_prefix: "[Pantry Path models]"

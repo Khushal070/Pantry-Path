@@ -114,6 +114,13 @@ catalog_eval:
     - [lime, lime juice]
     - [egg, egg yolk, egg white]
     - [beef chuck, beef stew meat]
+    # Added 2026-11-12 (from the dev split only): the same product on the shelf
+    - [mayonnaise, mayo]
+    - [spaghetti, spaghetti noodles]
+    - [rice noodles, pad thai noodles]
+    - [tamarind paste, tamarind]
+    - [sushi-grade salmon, salmon]
+    - [whole wheat bread, bread]
   min_recall_warn: 0.75       # held-out recall below this alerts (never fails the run)
   output_json: reports/catalog_eval.json
   output_md: reports/catalog_eval.md

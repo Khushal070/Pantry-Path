@@ -1,0 +1,41 @@
+id,message_1,message_2,dish,zip,avoid,diet,unsupported
+ind-01,"making pad thai tonight, im allergic to peanuts and shrimp. 45202",,pad thai,45202,peanuts;shellfish,none,
+ind-02,"Lasagna for 6 near 43215, no dairy please",,beef lasagna,43215,milk,none,
+ind-03,"hummus, no sesame or nuts, zip 30303",actually nuts are fine,hummus,30303,sesame,none,
+ind-04,"kid has an egg allergy, want to bake chocolate chip cookies for her class. 46204",,chocolate chip cookies,46204,egg,none,
+ind-05,"Caesar salad but I can't do fish at all, anchovies included. Near 37203",,caesar salad,37203,fish,none,
+ind-06,"celiac here lol, buttermilk pancakes?? 75201",,buttermilk pancakes,75201,gluten,none,
+ind-07,"I'd like to make shrimp scampi. Shellfish is fine, but I'm allergic to milk. My zip is 77002.",,shrimp scampi,77002,milk,none,
+ind-08,"veggie fried rice for two, no soy sauce stuff, im allergic to soy, 80202",,vegetable fried rice,80202,soy,none,
+ind-09,"can u help me shop for chili con carne 85004",,chili con carne,85004,,none,
+ind-10,"pesto pasta, I have a tree nut allergy (pine nuts too obviously), also no peanuts. 98101",,pesto pasta,98101,tree_nuts;peanuts,none,
+ind-11,"want sushi tonight, salmon avocado rolls, but sesame makes me break out. 90012",,salmon avocado sushi,90012,sesame,none,
+ind-12,"chicken tikka masala, dairy free and gluten free please! 40202",,chicken tikka masala,40202,milk;gluten,none,
+ind-13,"tuna salad sandwich, i'm pregnant so careful w the fish? 45202",,tuna salad sandwich,45202,,none,pregnancy
+ind-14,"Beef stew with red wine for a dinner party in 43215. One guest keeps halal.",,beef stew with red wine,43215,,none,halal
+ind-15,"spaghetti carbonara, no eggs, no wheat. 30303",,spaghetti carbonara,30303,egg;wheat,none,
+ind-16,"quiche lorraine for brunch. my partner is vegetarian. 46204",,quiche lorraine,46204,,vegetarian,
+ind-17,"falafel!! plant based only pls 37203",,falafel,37203,,vegan,
+ind-18,"banana bread, no nuts and no eggs, zip 75201",oh and no dairy either,banana bread,75201,tree_nuts;egg;milk,none,
+ind-19,"butter chicken, allergic to dairy, shellfish, and sesame. 77002",,butter chicken,77002,milk;shellfish;sesame,none,
+ind-20,"beef and broccoli stir fry for 4 in 80202, I keep kosher and avoid soy",,beef and broccoli stir fry,80202,soy,none,kosher
+ind-21,"kung pao chicken but peanut allergy, the bad kind. 85004",,kung pao chicken,85004,peanuts,none,
+ind-22,"peanut butter cookies for my roommate, she can't have wheat. 98101",,peanut butter cookie,98101,wheat,none,
+ind-23,"egg rolls for game night, no restrictions really. 90012",,egg roll,90012,,none,
+ind-24,"chicken pot pie, I'm on keto and also allergic to eggs. 40202",,chicken pot pie,40202,egg,none,keto
+ind-25,"deviled eggs for a potluck, no mustard, I'm allergic. 45202",,deviled egg,45202,,none,mustard allergy
+ind-26,"sloppy joes, no soy no wheat, 43215",wait wheat is ok actually,sloppy joe,43215,soy,none,
+ind-27,"cornbread for 8, dairy-free, egg-free. 30303",,cornbread,30303,milk;egg,none,
+ind-28,"broccoli cheese soup, I don't eat meat. 46204",,broccoli cheese soup,46204,,vegetarian,
+ind-29,"general tsos chicken, seafood allergy and soy allergy. 37203",,general tsos chicken,37203,fish;shellfish;soy,none,
+ind-30,"zuchinni bread, nut free. zip code is 75201",,zucchini bread,75201,tree_nuts,none,
+ind-31,"pulled pork sliders for a crowd near 77002. diabetic in the family",,pulled pork,77002,,none,diabetic
+ind-32,"spinach artichoke dip, no milk products, no cashews. 80202",,spinach artichoke dip,80202,milk;tree_nuts,none,
+ind-33,"white chicken chili, allergic to wheat, soy, milk and eggs. 85004",,white chicken chili,85004,wheat;soy;milk;egg,none,
+ind-34,"beef stroganof, gluten free please, 98101",,beef stroganoff,98101,gluten,none,
+ind-35,"vegan sugar cookies? 90012",,sugar cookie,90012,,vegan,
+ind-36,"scalloped potatoes, fish and shellfish allergy, no restrictions otherwise. 40202",,scalloped potato,40202,fish;shellfish,none,
+ind-37,"baked beans for a bbq in 45202, no restrictions",actually make it vegetarian,baked bean,45202,,vegetarian,
+ind-38,"southern fried chicken, I can eat eggs but not wheat or milk. 43215",,southern fried chicken,43215,wheat;milk,none,
+ind-39,"moroccan carrot salad, sesame and tree nut allergy, also low sodium if possible. 30303",,moroccan carrot salad,30303,sesame;tree_nuts,none,low sodium
+ind-40,"biscuits for breakfast, allergic to milk, egg, peanuts and soy. 46204",,biscuit,46204,milk;egg;peanuts;soy,none,

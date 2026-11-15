@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pantrypath-ml"
+version = "0.1.0"
+description = "Pantry Path model pipeline: self-hosted model client, evaluation, selection"
+requires-python = ">=3.11"
+# Dependencies are pinned in requirements.txt (generated from requirements.in)
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["mlruns", "cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+# (str, Enum) keeps the style of schema.py; StrEnum would change str() output
+ignore = ["UP042"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pantrypath_core", "pantrypath_pipeline", "pantrypath_ml"]

@@ -1,6 +1,7 @@
 """Request flow: dish + ZIP -> result.json, with fake stores, catalog and OFF snapshot."""
 
 import json
+import string
 from dataclasses import replace
 
 import pytest
@@ -214,11 +215,30 @@ def test_llm_fallback_for_dishes_outside_the_catalog(flow, monkeypatch):
                                          "source": "llm", "recipe_count": 0})
     asked = []
     monkeypatch.setenv("LLM_API_KEY", "test-key-not-used")
-    monkeypatch.setattr(req, "llm_profile", lambda c, q, client: asked.append(q) or llm_dish)
+    monkeypatch.setattr(req, "llm_profile",
+                        lambda c, q, client, template=None: asked.append((q, template))
+                        or llm_dish)
     result = req.build_result(flow, "khachapuri", "45202", [], "none",
                               providers=[kroger_fake(), target_fake()])
-    assert asked == ["khachapuri"]
+    assert asked == [("khachapuri", None)]  # by default the pipeline's own prompt
     assert (result.dish.source, result.meta.catalog_version) == ("llm", "llm")
+
+
+def test_llm_fallback_takes_a_prompt_template(flow, monkeypatch):
+    llm_dish = QUICHE.model_copy(update={"dish_id": "khachapuri", "name": "khachapuri",
+                                         "source": "llm", "recipe_count": 0})
+    asked = []
+    monkeypatch.setenv("LLM_API_KEY", "test-key-not-used")
+    monkeypatch.setattr(req, "llm_profile",
+                        lambda c, q, client, template=None: asked.append(template) or llm_dish)
+    template = (string.Template("prompt_version: other/1\n$dish_name"), "other/1")
+    req.build_result(flow, "khachapuri", "45202", [], "none",
+                     providers=[kroger_fake(), target_fake()], llm_template=template)
+    assert asked == [template]
+    asked.clear()
+    req.build_result(flow, "quiche", "45202", [], "none",  # a catalog dish: no LLM call
+                     providers=[kroger_fake(), target_fake()], llm_template=template)
+    assert asked == []
 
 
 def test_bad_zip_is_rejected(flow):

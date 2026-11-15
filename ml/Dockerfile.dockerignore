@@ -1,0 +1,18 @@
+# Used by BuildKit for `docker build -f ml/Dockerfile .` (context: the repo root)
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+.git
+.env
+frontend
+backend
+infra
+ml/mlruns
+ml/cache
+ml/reports
+data-pipeline/data/raw
+data-pipeline/data/interim
+data-pipeline/logs
+data-pipeline/results

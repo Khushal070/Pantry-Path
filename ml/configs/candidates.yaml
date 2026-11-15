@@ -1,0 +1,78 @@
+# Self-hosted model candidates for A1 (request parsing), A2 (unseen dishes) and A3 (answer).
+# Model ids live here only. For one run, MODEL_SERVER_URL overrides the server's base_url
+# and MODEL_NAME the candidate's model id. A private Cloud Run service needs a bearer token:
+# MODEL_SERVER_TOKEN (a fixed token, fine for a short job) or MODEL_SERVER_AUTH=google (the
+# caller mints and refreshes Google ID tokens; use this for the backend). Leave both unset
+# for a local server.
+
+default_server: ollama
+
+# How to reach each kind of server (base_url without /v1). json_mode sets how the reply
+# is held to the request's JSON schema:
+#   response_format  OpenAI-compatible /v1/chat/completions with response_format json_schema
+#   ollama_format    Ollama's native /api/chat with the schema in `format`
+#                    (Ollama's /v1 endpoint ignores `format`)
+servers:
+  ollama:
+    base_url: http://localhost:11434
+    # ollama_format, because Ollama's /v1 ignores Qwen's /no_think (tested on 0.40.15:
+    # thinking stays on), while its native `think: false` turns thinking off
+    json_mode: ollama_format
+  vllm:                       # used on Explorer (ml/slurm/)
+    base_url: http://localhost:8000
+    json_mode: response_format
+
+client:
+  temperature: 0
+  # Qwen3 thinking. With ollama_format the client sends Ollama's `think` option; with
+  # response_format (vLLM) it appends Qwen's /no_think switch to the prompt when false.
+  think: false
+  # With thinking on (thinking counts toward this). Prompt + max_output_tokens must fit the
+  # server's context: vLLM rejects a request that doesn't (slurm/run_search.sbatch serves
+  # 16384); on Ollama the reply is cut at context_length.
+  max_output_tokens: 8192
+  # With thinking off, per task. Longest normal replies on the dev sets (2026-11-11): A1
+  # 143 tokens, A2 672. A runaway reply (the same allergens repeated) then stops in seconds
+  # instead of running to 8192 tokens, past the read timeout. A3 writes about 1,000 tokens.
+  max_output_tokens_no_think: {a1: 256, a2: 1536, a3: 2048}
+  # Ollama context window, sent with every request as options.num_ctx. A plain
+  # `ollama serve` uses a short default and silently cuts long prompts (the A2 prompt).
+  context_length: 8192
+  # A 4B model on CPU can take a while per reply. Above Cloud Run's timeoutSeconds (600 in
+  # serving/cloudrun.yaml), so the server's timeout always fires first.
+  timeout_s: 620
+  max_attempts: 4             # tries per call on 429, server and network errors
+  # A read timeout is tried this many times at most: at temperature 0 the same prompt
+  # usually runs as long again
+  read_timeout_attempts: 2
+  retry_wait_max_s: 60
+  # One subfolder per model + quantization + prompt version + temperature + think, so a
+  # setting never replays another one's answers. Evaluation runs add a fresh subfolder.
+  cache_dir: cache/llm
+
+# Add a candidate with its size, default quantization and a model id per server and
+# quantization. params_b orders candidates for "the smallest model that passes".
+# This milestone evaluates one candidate (disk and compute limits; see
+# docs/model-pipeline-plan.md section 3). A second one is one more block here, e.g.:
+#   qwen3-1.7b:
+#     params_b: 1.7
+#     default_quantization: 4bit
+#     quantizations:
+#       4bit: {ollama: "<ollama tag>", vllm: <hugging face id>}
+# then add its name to `candidates` in configs/search.yaml. Check the exact tags first.
+candidates:
+  qwen3-4b:
+    params_b: 4.0
+    default_quantization: 4bit
+    # The hybrid Qwen3-4B (thinking on or off by switch). Ollama's plain qwen3:4b tag is
+    # the thinking-only 2507 build, which ignores /no_think, so it is not used here.
+    quantizations:
+      4bit: {ollama: "qwen3:4b-q4_K_M", vllm: Qwen/Qwen3-4B-AWQ}
+      8bit: {ollama: "qwen3:4b-q8_0", vllm: Qwen/Qwen3-4B-FP8}
+  # Evidence only (A2 dev, Nov 2026): not in configs/search.yaml, not proposed. The hybrid
+  # Qwen3-8B (thinking by switch, like the 4B above).
+  qwen3-8b:
+    params_b: 8.0
+    default_quantization: 4bit
+    quantizations:
+      4bit: {ollama: "qwen3:8b-q4_K_M", vllm: Qwen/Qwen3-8B-AWQ}

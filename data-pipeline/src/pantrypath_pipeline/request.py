@@ -20,6 +20,7 @@ import argparse
 import logging
 import re
 import sqlite3
+import string
 import sys
 import time
 from collections import Counter
@@ -66,11 +67,16 @@ def catalog_lookup(db_path: Path, query: str, min_score: float) -> DishProfile |
         ) from exc
 
 
-def llm_profile(cfg: Config, query: str, client: Any) -> DishProfile:
-    """A profile from the LLM (source 'llm'); client None = the one configured in .env."""
+LLMTemplate = tuple[string.Template, str]  # (prompt text, prompt version)
+
+
+def llm_profile(cfg: Config, query: str, client: Any,
+                template: LLMTemplate | None = None) -> DishProfile:
+    """A profile from the LLM (source 'llm'); client None = the one configured in .env,
+    template None = prompts/refine_dish.txt."""
     from pantrypath_pipeline import refine  # imported on use: the LLM stack is heavy
 
-    return refine.profile_for_unknown_dish(cfg, query, client)
+    return refine.profile_for_unknown_dish(cfg, query, client, template=template)
 
 
 def off_evidence(cfg: Config, barcodes: Iterable[str]) -> dict[str, ProductEvidence]:
@@ -85,8 +91,10 @@ def off_evidence(cfg: Config, barcodes: Iterable[str]) -> dict[str, ProductEvide
         return {}
 
 
-def resolve_dish(cfg: Config, query: str, llm_client: Any = None) -> tuple[DishProfile, DishSource]:
-    """The catalog's profile for the dish, else one from the LLM."""
+def resolve_dish(cfg: Config, query: str, llm_client: Any = None,
+                 llm_template: LLMTemplate | None = None) -> tuple[DishProfile, DishSource]:
+    """The catalog's profile for the dish, else one from the LLM (with llm_template as its
+    prompt, if given)."""
     db_path = cfg.path(cfg["catalog"]["sqlite_output"])
     if db_path.is_file():
         profile = catalog_lookup(db_path, query, cfg["request"]["fuzzy_min_score"])
@@ -102,7 +110,7 @@ def resolve_dish(cfg: Config, query: str, llm_client: Any = None) -> tuple[DishP
             "catalog (batch pipeline or `dvc pull`) or set LLM_API_KEY in .env"
         )
     log.info("Dish %r %s; asking the LLM (paid call)", query, reason)
-    return llm_profile(cfg, query, llm_client), "llm"
+    return llm_profile(cfg, query, llm_client, llm_template), "llm"
 
 
 def search_plans(
@@ -221,10 +229,14 @@ def build_result(
     *,
     providers: list[StoreProvider] | None = None,
     llm_client: Any = None,
+    llm_template: LLMTemplate | None = None,
 ) -> Result:
-    """Run the whole request flow and return the validated result."""
+    """Run the whole request flow and return the validated result. llm_client and
+    llm_template (prompt text, version) replace the LLM fallback's client and prompt for a
+    dish the catalog doesn't have; by default they are the .env client and
+    prompts/refine_dish.txt."""
     request = RequestInfo(query=query, zip=zip_code, avoid=list(avoid), diet=diet)
-    profile, source = resolve_dish(cfg, request.query, llm_client)
+    profile, source = resolve_dish(cfg, request.query, llm_client, llm_template)
     providers = providers if providers is not None else make_providers(cfg)
     terms = [ingredient.name for ingredient in profile.ingredients]
     found, stores, used = gather_products(cfg, providers, terms, request.zip)

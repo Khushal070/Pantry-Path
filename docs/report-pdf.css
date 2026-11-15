@@ -1,0 +1,77 @@
+/* Print stylesheet for the reports in docs/ (used by docs/build-report-pdf.sh), in the look
+   of docs/data-pipeline-report.pdf: Letter, Helvetica Neue, green headings, pale tables.
+   The footer text is set per report by the build script. */
+@page {
+  size: Letter;
+  margin: 0.8in 0.95in 0.85in;
+  @bottom-center {
+    font: 8.5pt "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #8a8a8a;
+  }
+}
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #1f1f1f;
+  margin: 0;
+  max-width: none;
+}
+h1 {
+  font-size: 23pt;
+  line-height: 1.2;
+  color: #26422b;
+  margin: 0 0 4pt;
+}
+h1 + p { color: #6b6b6b; font-size: 11pt; margin-top: 0; }
+h2 {
+  font-size: 15pt;
+  color: #3b6b40;
+  margin: 22pt 0 9pt;
+  padding-bottom: 5pt;
+  border-bottom: 1px solid #dcdcdc;
+  break-after: avoid;
+}
+h3 {
+  font-size: 12pt;
+  color: #3b6b40;
+  margin: 16pt 0 6pt;
+  break-after: avoid;
+}
+p, li { orphans: 3; widows: 3; }
+p { margin: 0 0 9pt; }
+ul, ol { margin: 0 0 9pt; padding-left: 20pt; }
+li { margin: 2pt 0; }
+a { color: #2f5e8f; text-decoration: none; }
+code {
+  font-family: Menlo, Monaco, monospace;
+  font-size: 0.86em;
+  background: #f2f2f2;
+  padding: 0.5pt 3pt;
+  border-radius: 3px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 4pt 0 11pt;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  break-inside: auto;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th, td {
+  border: 1px solid #d3d9d3;
+  padding: 4pt 6pt;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #eef3ee; font-weight: 600; }
+/* figures: the image and the italic caption under it stay on one page */
+p:has(> img) { margin: 8pt 0 3pt; break-inside: avoid; break-after: avoid; }
+img { display: block; max-width: 100%; max-height: 5.2in; margin: 0 auto; border: 1px solid #e3e3e3; }
+p:has(> img) + p { font-size: 9pt; color: #5c5c5c; text-align: center; margin-bottom: 12pt; break-before: avoid; }
+/* an evidence appendix is reference material: denser */
+#appendix-evidence ~ table { font-size: 8.5pt; line-height: 1.3; }
+#appendix-evidence ~ table td, #appendix-evidence ~ table th { padding: 3pt 5pt; }

@@ -1,0 +1,25 @@
+prompt_version: parse_request/1
+You read a shopper's chat with a grocery assistant and fill in one JSON object for the
+grocery search. Allergies are safety-critical: never drop one the shopper mentions.
+
+Fields:
+- query: the dish they want to cook, in their words (fix obvious spelling mistakes).
+- zip: their 5-digit US ZIP code. For ZIP+4 ("02115-1234") use the first five digits.
+  null if they gave none.
+- avoid: allergens to avoid, only from this list: $allergens.
+  Map everyday words to the list: dairy or lactose -> milk; eggs -> egg; nuts -> tree_nuts
+  (peanuts are separate: peanuts); celiac -> gluten; shrimp or crab -> shellfish.
+  "No X", "X-free", "allergic to X", "can't have X" mean avoid X. "X is fine" or
+  "I can eat X" means do not avoid X.
+- diet: one of $diets. Use none unless they say vegetarian or vegan (or the same in other
+  words).
+- extras.servings: how many people or servings, or null.
+- extras.tweaks: changes to the dish ("crustless", "extra spicy"), or [].
+- extras.unsupported: needs this search can't check, such as other diets or allergies
+  outside the list. Use these labels when one fits: $unsupported_labels. Otherwise a short
+  description. [] if none.
+$rules$examples
+Chat:
+$chat
+
+Answer with the JSON object only.

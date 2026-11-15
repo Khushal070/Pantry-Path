@@ -1,0 +1,347 @@
+name: Model pipeline
+
+# Unit tests -> small A1/A2 evaluation on a seeded DEV sample on the runner's CPU (Ollama)
+# -> validation and bias gates -> champion comparison against the committed full final
+# report. Release, on a push to main or model-pipeline that changed registry/champion.json,
+# serving/ or this workflow: push the committed champion's image to Artifact Registry,
+# deploy a new Cloud Run revision, smoke-test it and roll back automatically if it fails.
+# Notifications on failure, failed gates and completion.
+#
+# CI never reads the held-out test or realistic splits (running them on every push would
+# make them tuning data). The held-out numbers come from `select final`, run once by hand;
+# commit its reports/final/<id>/ folder, and CI promotes only a setting that has one.
+#
+# Configure in the repository settings (nothing project-specific is stored here):
+#   variables: GCP_PROJECT_ID, GCP_REGION, AR_DOCKER_REPO, AR_GENERIC_REPO,
+#              CLOUD_RUN_SERVICE, RUN_SERVICE_ACCOUNT
+#   secrets:   GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT,
+#              ALERT_EMAIL_TO, ALERT_SMTP_USER, ALERT_SMTP_PASSWORD, SLACK_WEBHOOK_URL
+# Without the GCP variables the release job is skipped; without the alert secrets,
+# notifications are only logged.
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - model-pipeline
+    paths:
+      - "ml/**"
+      - ".github/workflows/model-pipeline.yml"
+      # A2 reuses the data pipeline's prompt, schema and code; A1 validates against
+      # pantrypath_core: a change there can change the model's results
+      - "shared/**"
+      - "data-pipeline/src/**"
+      - "data-pipeline/prompts/**"
+      - "data-pipeline/config/**"
+      - "data-pipeline/requirements*"
+      - "data/golden/**"
+  pull_request:
+    branches:
+      - main
+      - model-pipeline
+    paths:
+      - "ml/**"
+      - ".github/workflows/model-pipeline.yml"
+      # same list as above
+      - "shared/**"
+      - "data-pipeline/src/**"
+      - "data-pipeline/prompts/**"
+      - "data-pipeline/config/**"
+      - "data-pipeline/requirements*"
+      - "data/golden/**"
+  # By hand from the Actions tab, on any branch; never releases (release needs a push to main)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # workload identity federation for GCP
+
+env:
+  OLLAMA_VERSION: "0.40.15"
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
+      - name: Lint (ruff)
+        run: ruff check src tests serving
+      # No network, no model server, no keys
+      - name: Unit tests
+        run: python -m pytest -q --junitxml=pytest-report.xml
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ml-pytest-report
+          path: ml/pytest-report.xml
+
+  evaluate:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ml
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
+      promoted: ${{ steps.champion.outputs.promoted }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
+      - name: Pull the dish catalog (public DVC remote)
+        working-directory: .
+        run: |
+          dvc pull data-pipeline/data/processed/dish_profiles.json.dvc \
+            data-pipeline/data/processed/pantrypath.sqlite.dvc
+      # Deterministic from the catalog; fails if the committed A3 sets are out of date
+      - name: A3 evaluation sets
+        run: |
+          python -m pantrypath_ml.evalsets generate-a3
+          # also fails when the sets were never committed (git diff ignores untracked files)
+          changed="$(git status --porcelain -- evalsets/a3_dev.jsonl evalsets/a3_test.jsonl)"
+          if [ -n "$changed" ]; then echo "$changed"; echo "Commit the regenerated A3 sets"; exit 1; fi
+      - name: Model id of the proposed setting
+        id: model
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json
+          from pantrypath_ml.local_llm import get_candidate, load_candidates
+          p = json.load(open("registry/proposed.json"))
+          print("id=" + get_candidate(load_candidates(), p["candidate"], server="ollama",
+                                      quantization=p["quantization"]).model)
+          EOF
+      - uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ steps.model.outputs.id }}
+      - name: Start Ollama on the runner's CPU
+        run: |
+          curl -fsSL https://ollama.com/install.sh | OLLAMA_VERSION="$OLLAMA_VERSION" sh
+          sudo systemctl stop ollama || true
+          OLLAMA_CONTEXT_LENGTH=8192 nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -sf http://127.0.0.1:11434/api/version && break; sleep 2; done
+          ollama pull "${{ steps.model.outputs.id }}"
+      # The proposed setting on a seeded sample of the A1, A2 and A3 DEV sets, then the gates
+      - name: CI evaluation and gates
+        id: gate
+        run: |
+          set +e
+          python -m pantrypath_ml.select final --ci --server ollama --no-mlflow | tee "$RUNNER_TEMP/final.json"
+          status=${PIPESTATUS[0]}
+          echo "passed=$([ "$status" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "final=$(ls -d reports/final/*-ci | tail -n 1)" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Fetch the current champion from Artifact Registry
+        if: vars.GCP_PROJECT_ID != '' && github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+        if: vars.GCP_PROJECT_ID != '' && github.ref == 'refs/heads/main'
+      - name: Pull champion record
+        if: vars.GCP_PROJECT_ID != '' && github.ref == 'refs/heads/main'
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          AR_DOCKER_REPO: ${{ vars.AR_DOCKER_REPO }}
+          AR_GENERIC_REPO: ${{ vars.AR_GENERIC_REPO }}
+        run: python -m pantrypath_ml.registry pull-champion
+      # Promotion uses the committed full final report (held-out numbers) for the proposed
+      # setting, never the small CI sample
+      - name: Compare with the champion
+        id: champion
+        run: |
+          python -m pantrypath_ml.select promote --latest-full | tee "$RUNNER_TEMP/promote.json"
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); print('promoted=' + str(d['promoted']).lower())" \
+            "$RUNNER_TEMP/promote.json" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: model-evaluation
+          path: |
+            ml/reports/final/
+            ml/registry/champion*.json
+
+  # What the pushed commit changed against its parent (the first parent for a merge)
+  changes:
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/model-pipeline')
+    runs-on: ubuntu-latest
+    outputs:
+      champion: ${{ steps.diff.outputs.champion }}
+      serving: ${{ steps.diff.outputs.serving }}
+      workflow: ${{ steps.diff.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Compare with the previous commit
+        id: diff
+        shell: bash
+        run: |
+          changed() {  # true when the path changed (or there is no previous commit)
+            if ! git rev-parse -q --verify HEAD^ >/dev/null; then echo true; return; fi
+            git diff --quiet HEAD^ HEAD -- "$1" && echo false || echo true
+          }
+          echo "champion=$(changed ml/registry/champion.json)" >> "$GITHUB_OUTPUT"
+          echo "serving=$(changed ml/serving/)" >> "$GITHUB_OUTPUT"
+          echo "workflow=$(changed .github/workflows/model-pipeline.yml)" >> "$GITHUB_OUTPUT"
+
+  # Deploys the committed champion (registry/champion.json) when it, the model server or
+  # this workflow changed (so a fix to the release steps is tested by a release). Not gated
+  # on `evaluate`: that job judges the proposed setting, and the champion passed its own
+  # `select final` before it was committed. Never on pull requests or manual runs. Both
+  # branches deploy the same Cloud Run service.
+  release:
+    needs: [test, changes]
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/model-pipeline') &&
+      vars.GCP_PROJECT_ID != '' &&
+      (needs.changes.outputs.champion == 'true' || needs.changes.outputs.serving == 'true' ||
+       needs.changes.outputs.workflow == 'true')
+    # one deploy (and its rollback) at a time across both branches
+    concurrency:
+      group: model-server-release
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+        # -eo pipefail: a failed smoke test or deploy must fail its step through `| tee`
+        # and `| tail`, or the rollback below never runs
+        shell: bash
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      AR_DOCKER_REPO: ${{ vars.AR_DOCKER_REPO }}
+      AR_GENERIC_REPO: ${{ vars.AR_GENERIC_REPO }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      RUN_SERVICE_ACCOUNT: ${{ vars.RUN_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
+      # The smoke test resolves A1 dishes against the catalog; pulled before the deploy so a
+      # failed pull stops the release before anything changes
+      - name: Pull the dish catalog (public DVC remote)
+        working-directory: .
+        run: |
+          dvc pull data-pipeline/data/processed/dish_profiles.json.dvc \
+            data-pipeline/data/processed/pantrypath.sqlite.dvc
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Push the model-server image
+        id: image
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          echo "uri=$(python -m pantrypath_ml.registry push-image --tag "$GITHUB_SHA" | tail -n 1)" >> "$GITHUB_OUTPUT"
+      # Only a new champion gets a new version: rollback.sh restores the second newest
+      - name: Push the champion record
+        if: needs.changes.outputs.champion == 'true'
+        run: python -m pantrypath_ml.registry push-champion
+      - name: Deploy a new Cloud Run revision (the previous one stays for rollback)
+        id: deploy
+        env:
+          IMAGE: ${{ steps.image.outputs.uri }}
+        run: |
+          url="$(bash serving/deploy.sh | tail -n 1)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      # An ID token for the private service (the CI service account needs run.invoker)
+      - name: Token for the deployed service
+        id: token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.deploy.outputs.url }}
+          id_token_include_email: true
+      # Valid replies from the new revision; latency is reported, not gated (see README)
+      - name: Smoke test the new revision
+        id: smoke
+        env:
+          MODEL_SERVER_URL: ${{ steps.deploy.outputs.url }}
+          MODEL_SERVER_TOKEN: ${{ steps.token.outputs.id_token }}
+        run: python serving/latency_check.py --smoke | tee "$RUNNER_TEMP/smoke.json"
+      # The champion record is restored only if this release pushed a new one
+      - name: Roll back after a failed smoke test
+        if: failure() && steps.smoke.outcome == 'failure'
+        env:
+          RESTORE_CHAMPION: ${{ needs.changes.outputs.champion == 'true' && '1' || '0' }}
+        run: bash serving/rollback.sh
+
+  notify:
+    needs: [test, evaluate, release]
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    env:
+      ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+      ALERT_SMTP_USER: ${{ secrets.ALERT_SMTP_USER }}
+      ALERT_SMTP_PASSWORD: ${{ secrets.ALERT_SMTP_PASSWORD }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt -e ../shared -e ../data-pipeline -e .
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: model-evaluation
+          path: ml
+      - name: Send the notification
+        env:
+          TEST: ${{ needs.test.result }}
+          EVAL: ${{ needs.evaluate.result }}
+          PASSED: ${{ needs.evaluate.outputs.passed }}
+          RELEASE: ${{ needs.release.result }}
+          PROMOTED: ${{ needs.evaluate.outputs.promoted }}
+        run: |
+          body="$(ls -d reports/final/*-ci 2>/dev/null | tail -n 1)/final.md"
+          if [ "$EVAL" = "failure" ] && [ "$PASSED" = "false" ]; then
+            event=gate_failed; subject="model gates failed on ${GITHUB_REF_NAME}"
+          elif [ "$TEST" = "failure" ] || [ "$EVAL" = "failure" ] || [ "$RELEASE" = "failure" ]; then
+            event=failure; subject="model pipeline failed on ${GITHUB_REF_NAME}"
+          else
+            event=completed; subject="model pipeline completed on ${GITHUB_REF_NAME} (promoted: ${PROMOTED:-false})"
+          fi
+          python -m pantrypath_ml.notify --event "$event" --subject "$subject" \
+            --body "tests=$TEST evaluation=$EVAL release=$RELEASE
+          $RUN_URL" --body-file "$body"

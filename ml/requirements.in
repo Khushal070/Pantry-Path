@@ -1,0 +1,14 @@
+# Top-level dependencies of the model pipeline (edit this file).
+# requirements.txt is generated from it with exact versions for every platform, constrained
+# to the data pipeline's pins wherever the two overlap:
+#   uv pip compile requirements.in --universal --python-version 3.12 \
+#     -c ../data-pipeline/requirements.txt -o requirements.txt
+
+# The data pipeline's own dependencies (pantrypath_ml imports pantrypath_pipeline)
+-r ../data-pipeline/requirements.in
+
+# Experiment tracking
+mlflow>=3.5
+
+# Bias slicing (same pin as the data pipeline)
+fairlearn>=0.12

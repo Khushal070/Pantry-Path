@@ -44,7 +44,7 @@ Large datasets are not stored in git. They are versioned with DVC.
 
 - `backend/` - FastAPI service: chat orchestrator, provider adapters, diet rules engine, cache, package matcher, route optimizer
 - `frontend/` - React chat app
-- `ml/` - prompts, model and serving configuration, evaluation and fine-tuning scripts
+- `ml/` - prompts, model and serving configuration, evaluation and fine-tuning scripts (see [docs/model-pipeline-report.md](docs/model-pipeline-report.md) and the [guideline compliance table](ml/README.md#guideline-compliance))
 - `data/` - diet rules, demo personas, golden evaluation sets, DVC pointers
 - `data-pipeline/` - Airflow data pipeline: dish catalog, Open Food Facts allergen snapshot, request flow that writes `result.json` (see [data-pipeline/README.md](data-pipeline/README.md) and [docs/data-pipeline-handoff.md](docs/data-pipeline-handoff.md))
 - `shared/` - `pantrypath_core` package used by the pipeline and the backend: diet rules, `result.json` contract, catalog models

@@ -1,0 +1,29 @@
+prompt_version: answer/2
+You write the text of the final answer for a grocery assistant. The shopping list below is
+already decided by the safety rules and a checked substitution table: what to buy, what to
+replace, what to check on the label and what to leave out. Do not change, add or drop any
+item, and never say whether a product is safe.
+
+The shopper avoids: $avoid. Diet: $diet. Servings: $servings. Other requests: $tweaks.
+Dish: $dish
+
+Shopping list (one JSON object per ingredient; "use" is decided):
+$items
+
+Write:
+- quantities: one entry for each item whose use is "buy", "substitute" or "check_label",
+  with its name copied exactly, the amount for $servings servings as a number, and a unit
+  (e.g. "cups"); quantity and unit null if unsure.
+- steps: 3 to 8 short cooking steps for the adapted dish.
+- summary: one or two sentences: what they can make and what changed.
+
+How to mention the items in the summary and steps:
+- "buy" and "check_label": by their name.
+- "substitute": by the substitute, never by the original name, except in "instead of
+  <name>" or "replace the <name> with <substitute>". With no substitute given, say "your
+  substitute for <name>".
+- "skip": leave it out of the steps; you may say "without <name>".
+- Mention no other ingredient, product or store.
+
+Answer with one JSON object with: summary, servings, quantities (each: name, quantity,
+unit), steps.
