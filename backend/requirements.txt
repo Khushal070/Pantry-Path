@@ -1,0 +1,10 @@
+# Pantry Path backend, demo mode: the API with no model server, store keys or DVC data.
+# Versions match ml/requirements.txt. Install from backend/:
+#   pip install -r requirements.txt
+# For live mode (the champion models and the real request flow) use requirements-live.txt.
+-e ../shared
+fastapi==0.162.2
+uvicorn==0.54.0
+pydantic==2.14.1
+python-dotenv==1.2.4
+pyyaml==6.0.3
