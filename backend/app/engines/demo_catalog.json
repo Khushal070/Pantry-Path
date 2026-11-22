@@ -1,0 +1,4595 @@
+{
+ "source": "ml/evalsets/a3_dev.jsonl (dev split; dish, cuisine, ingredients only)",
+ "dishes": [
+  {
+   "name": "baked beans",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "brown sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "bacon",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "ketchup",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "navy beans",
+     "role": "core",
+     "category": "legume"
+    },
+    {
+     "name": "canned pork and beans",
+     "role": "core",
+     "category": "legume"
+    },
+    {
+     "name": "molasses",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "dry mustard",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "barbecue sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "yellow mustard",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "baked ziti",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "mozzarella cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "ziti pasta",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "marinara sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "ricotta cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground beef",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "basil",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "dried oregano",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "banana bread",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "bananas",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "walnuts",
+     "role": "common",
+     "category": "nut_seed"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    }
+   ]
+  },
+  {
+   "name": "banana cake with cream cheese frosting",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "bananas",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "cream cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "powdered sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "light brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "buttermilk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "walnuts",
+     "role": "common",
+     "category": "nut_seed"
+    }
+   ]
+  },
+  {
+   "name": "barbecue ribs",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "brown sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "barbecue sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "pork ribs",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "ketchup",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chili sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "liquid smoke",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "apple cider vinegar",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "beef and broccoli stir fry",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "cornstarch",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "broccoli",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "soy sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "beef sirloin steak",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "oyster sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "fresh ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "water chestnuts",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "beef stroganoff",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "sour cream",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "mushrooms",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "beef stew meat",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "egg noodles",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "beef broth",
+     "role": "common",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "name": "biscuits",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "vegetable shortening",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking soda",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "buttermilk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "self-rising flour",
+     "role": "common",
+     "category": "baking"
+    }
+   ]
+  },
+  {
+   "name": "blueberry muffins",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "blueberries",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "baking soda",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "breakfast casserole",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "breakfast sausage",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "dry mustard",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "bacon",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "ham",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "frozen hash browns",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "bread",
+     "role": "common",
+     "category": "bakery"
+    }
+   ]
+  },
+  {
+   "name": "broccoli cheese soup",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "broccoli",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "sharp cheddar cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "carrots",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "velveeta cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "half-and-half",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chicken bouillon cubes",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "broccoli salad",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "broccoli",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "mayonnaise",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "bacon",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "red onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "raisins",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sunflower seeds",
+     "role": "common",
+     "category": "nut_seed"
+    },
+    {
+     "name": "apple cider vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "brownies",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "cocoa powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "walnuts",
+     "role": "common",
+     "category": "nut_seed"
+    }
+   ]
+  },
+  {
+   "name": "butter chicken",
+   "cuisine": "south_asian",
+   "ingredients": [
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "garam masala",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "tomato puree",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "heavy cream",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "plain yogurt",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomato paste",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "ground coriander",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cilantro",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "caesar salad",
+   "cuisine": "latin_american",
+   "ingredients": [
+    {
+     "name": "lemon juice",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "romaine lettuce",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "croutons",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "olive oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "dijon mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "anchovy fillets",
+     "role": "common",
+     "category": "seafood"
+    },
+    {
+     "name": "anchovy paste",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "california roll",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "avocado",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "sushi rice",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "cucumber",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "nori",
+     "role": "core",
+     "category": "other"
+    },
+    {
+     "name": "imitation crab",
+     "role": "core",
+     "category": "seafood"
+    },
+    {
+     "name": "rice vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "mayonnaise",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "pickled ginger",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "sesame seeds",
+     "role": "common",
+     "category": "nut_seed"
+    },
+    {
+     "name": "soy sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "wasabi",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "chicken and dumplings",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "chicken broth",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "chicken",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "carrots",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "poultry seasoning",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "parsley",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "thyme",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "chicken bouillon",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "chicken curry",
+   "cuisine": "south_asian",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "curry powder",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "chicken",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ginger root",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "coconut milk",
+     "role": "common",
+     "category": "other"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground turmeric",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "chicken enchiladas",
+   "cuisine": "latin_american",
+   "ingredients": [
+    {
+     "name": "chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "enchilada sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "flour tortillas",
+     "role": "common",
+     "category": "bakery"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "corn tortillas",
+     "role": "common",
+     "category": "bakery"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "monterey jack cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "diced green chiles",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "salsa",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "chicken noodle soup",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "carrots",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "celery",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chicken broth",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "egg noodles",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "bay leaves",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "fresh parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chicken bouillon cubes",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "thyme",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "chicken pot pie",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "chicken broth",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "carrots",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "pie crust",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "potatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "dried thyme",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "frozen peas",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "chicken tikka masala",
+   "cuisine": "south_asian",
+   "ingredients": [
+    {
+     "name": "ginger",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "garam masala",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cumin",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "heavy cream",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "plain yogurt",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "boneless skinless chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "cilantro",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground turmeric",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground coriander",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "tomato puree",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "tomato paste",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "basmati rice",
+     "role": "common",
+     "category": "grain"
+    }
+   ]
+  },
+  {
+   "name": "chicken vindaloo",
+   "cuisine": "south_asian",
+   "ingredients": [
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "fresh ginger",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chicken",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "vinegar",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "ground turmeric",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cinnamon sticks",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cumin seeds",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "curry powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cardamom",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cloves",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "black mustard seeds",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "curry leaves",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "potatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "whole cloves",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "chili",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "chili powder",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "kidney beans",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "diced tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chili beans",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "tomato paste",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "cornbread",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "cornmeal",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "buttermilk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking soda",
+     "role": "common",
+     "category": "baking"
+    }
+   ]
+  },
+  {
+   "name": "cream cheese chicken",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "cream cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "boneless skinless chicken breasts",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cream of chicken soup",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "dark chocolate cake",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "unsweetened cocoa powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "powdered sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "canola oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "coffee",
+     "role": "common",
+     "category": "beverage"
+    },
+    {
+     "name": "dark chocolate",
+     "role": "common",
+     "category": "baking"
+    }
+   ]
+  },
+  {
+   "name": "deviled eggs",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "mayonnaise",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "paprika",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "yellow mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "dijon mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "dry mustard",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "white vinegar",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "dinner rolls",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "active dry yeast",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "bread flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "shortening",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "egg rolls",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "soy sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "cabbage",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "carrots",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground pork",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "egg roll wrappers",
+     "role": "core",
+     "category": "other"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "bean sprouts",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cornstarch",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "fresh ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "water chestnuts",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "falafel",
+   "cuisine": "middle_eastern_african",
+   "ingredients": [
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "fresh parsley",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "dried chickpeas",
+     "role": "core",
+     "category": "legume"
+    },
+    {
+     "name": "ground cumin",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "fresh cilantro",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground coriander",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "canola oil",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "general tso's chicken",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "soy sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "cornstarch",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "boneless skinless chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "fresh ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "rice vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "shaoxing rice wine",
+     "role": "common",
+     "category": "beverage"
+    },
+    {
+     "name": "boneless chicken thighs",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "broccoli",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "other"
+    },
+    {
+     "name": "dried red chili peppers",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "white rice",
+     "role": "common",
+     "category": "grain"
+    }
+   ]
+  },
+  {
+   "name": "grape salad",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "cream cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "sour cream",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "brown sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "seedless grapes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "pecans",
+     "role": "common",
+     "category": "nut_seed"
+    },
+    {
+     "name": "walnuts",
+     "role": "common",
+     "category": "nut_seed"
+    }
+   ]
+  },
+  {
+   "name": "hummus",
+   "cuisine": "middle_eastern_african",
+   "ingredients": [
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "lemon juice",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chickpeas",
+     "role": "core",
+     "category": "legume"
+    },
+    {
+     "name": "tahini",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "olive oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "italian meatballs",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "italian breadcrumbs",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "fresh parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "ground pork",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "garlic powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "dried oregano",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "basil",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "kung pao chicken",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "cornstarch",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "soy sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "boneless skinless chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "peanuts",
+     "role": "core",
+     "category": "nut_seed"
+    },
+    {
+     "name": "red pepper flakes",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "dry sherry",
+     "role": "common",
+     "category": "beverage"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "other"
+    },
+    {
+     "name": "hoisin sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "rice vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "red bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "rice",
+     "role": "common",
+     "category": "grain"
+    },
+    {
+     "name": "canola oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "dried red chili peppers",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "moroccan carrot salad",
+   "cuisine": "middle_eastern_african",
+   "ingredients": [
+    {
+     "name": "carrots",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "lemon juice",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground cumin",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cilantro",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "red pepper flakes",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "moroccan chicken",
+   "cuisine": "middle_eastern_african",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cumin",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "chicken breasts",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "fresh parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "honey",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "lemons",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground turmeric",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "raisins",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "couscous",
+     "role": "common",
+     "category": "grain"
+    },
+    {
+     "name": "ground ginger",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "chicken thighs",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "saffron",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "naan",
+   "cuisine": "south_asian",
+   "ingredients": [
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "active dry yeast",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "plain yogurt",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "ghee",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "oatmeal raisin cookies",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "raisins",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "brown sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "old fashioned oats",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "common",
+     "category": "sweetener"
+    }
+   ]
+  },
+  {
+   "name": "pad thai",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "bean sprouts",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "fish sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "peanuts",
+     "role": "core",
+     "category": "nut_seed"
+    },
+    {
+     "name": "limes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "rice noodles",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cilantro",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "shrimp",
+     "role": "common",
+     "category": "seafood"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "soy sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "shallots",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chicken breast",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "tamarind paste",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "extra firm tofu",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "pancakes",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking soda",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "maple syrup",
+     "role": "common",
+     "category": "sweetener"
+    }
+   ]
+  },
+  {
+   "name": "pasta salad",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "rotini pasta",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "cucumber",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "black olives",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "red onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "mayonnaise",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cherry tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "broccoli",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "red wine vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "italian dressing",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "peach cobbler",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "peaches",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "margarine",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "ground nutmeg",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    }
+   ]
+  },
+  {
+   "name": "peanut butter cookies",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "peanut butter",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "brown sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "vegetable shortening",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "pot roast",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onions",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "carrots",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "beef chuck roast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "potatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "bay leaves",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "beef broth",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "red wine",
+     "role": "common",
+     "category": "beverage"
+    },
+    {
+     "name": "thyme",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "potato salad",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "mayonnaise",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "potatoes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "yellow mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "apple cider vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "dill pickles",
+     "role": "common",
+     "category": "condiment"
+    }
+   ]
+  },
+  {
+   "name": "potato soup",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "russet potatoes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "bacon",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "chicken broth",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "carrots",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "parsley",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "pulled pork",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "barbecue sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "pork shoulder",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "apple cider vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "liquid smoke",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "hamburger buns",
+     "role": "common",
+     "category": "bakery"
+    }
+   ]
+  },
+  {
+   "name": "pumpkin pie",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "canned pumpkin puree",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground ginger",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "pie crust",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "evaporated milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "ground nutmeg",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "ground cloves",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "quiche lorraine",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "bacon",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "swiss cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "pie crust",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "nutmeg",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "heavy cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "half-and-half",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "gruyere cheese",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "roasted asparagus",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "asparagus",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "kosher salt",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "salisbury steak",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "beef broth",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "mushrooms",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "garlic powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "bread crumbs",
+     "role": "common",
+     "category": "bakery"
+    }
+   ]
+  },
+  {
+   "name": "scalloped potatoes",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "potatoes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "milk",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "heavy cream",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "shrimp scampi",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "shrimp",
+     "role": "core",
+     "category": "seafood"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "fresh parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "dry white wine",
+     "role": "common",
+     "category": "beverage"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "lemons",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "linguine",
+     "role": "common",
+     "category": "grain"
+    },
+    {
+     "name": "red pepper flakes",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "sloppy joes",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ketchup",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "hamburger buns",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "worcestershire sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "vinegar",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "yellow mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "southern fried chicken",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "whole chicken",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "garlic powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "paprika",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "buttermilk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "onion powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "seasoned salt",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "spaghetti",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "spaghetti",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomato paste",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "basil",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "dried oregano",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "diced tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "garlic powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "spaghetti carbonara",
+   "cuisine": "european",
+   "ingredients": [
+    {
+     "name": "parmesan cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "spaghetti",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "bacon",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "pancetta",
+     "role": "common",
+     "category": "meat"
+    },
+    {
+     "name": "parsley",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "spinach artichoke dip",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "frozen spinach",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "parmesan cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "artichoke hearts",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "mayonnaise",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "cream cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "mozzarella cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tortilla chips",
+     "role": "common",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "name": "steak fajitas",
+   "cuisine": "latin_american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "flour tortillas",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "flank steak",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "salsa",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "limes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "cilantro",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ground cumin",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "dried oregano",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "lemon",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "red bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "sugar cookies",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "granulated sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "butter",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "baking soda",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "baking powder",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "cream of tartar",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "powdered sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "shortening",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "sweet and sour chicken",
+   "cuisine": "east_se_asian",
+   "ingredients": [
+    {
+     "name": "cornstarch",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "pineapple chunks",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "boneless skinless chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "white vinegar",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "soy sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "brown sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "ketchup",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "green bell pepper",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "ginger",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "carrots",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "eggs",
+     "role": "common",
+     "category": "egg"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "red bell pepper",
+     "role": "common",
+     "category": "produce"
+    }
+   ]
+  },
+  {
+   "name": "taco casserole",
+   "cuisine": "latin_american",
+   "ingredients": [
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "core",
+     "category": "dairy"
+    },
+    {
+     "name": "taco seasoning",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "salsa",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "lettuce",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "tortilla chips",
+     "role": "common",
+     "category": "other"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "black olives",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "monterey jack cheese",
+     "role": "common",
+     "category": "dairy"
+    }
+   ]
+  },
+  {
+   "name": "taco soup",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "ground beef",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "diced tomatoes",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "corn",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "taco seasoning",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "pinto beans",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "kidney beans",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "black beans",
+     "role": "common",
+     "category": "legume"
+    },
+    {
+     "name": "tomato sauce",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "tortilla chips",
+     "role": "common",
+     "category": "other"
+    },
+    {
+     "name": "stewed tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "diced tomatoes with green chilies",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "diced green chiles",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "ranch dressing mix",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "tuna casserole",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "canned tuna",
+     "role": "core",
+     "category": "seafood"
+    },
+    {
+     "name": "cream of mushroom soup",
+     "role": "core",
+     "category": "other"
+    },
+    {
+     "name": "egg noodles",
+     "role": "core",
+     "category": "grain"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "cheddar cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "frozen peas",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "evaporated milk",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "mayonnaise",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "elbow macaroni",
+     "role": "common",
+     "category": "grain"
+    }
+   ]
+  },
+  {
+   "name": "tuna salad sandwich",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "mayonnaise",
+     "role": "core",
+     "category": "condiment"
+    },
+    {
+     "name": "canned tuna",
+     "role": "core",
+     "category": "seafood"
+    },
+    {
+     "name": "sandwich bread",
+     "role": "core",
+     "category": "bakery"
+    },
+    {
+     "name": "celery",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "dijon mustard",
+     "role": "common",
+     "category": "condiment"
+    },
+    {
+     "name": "tomatoes",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "butter",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "lettuce",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "onion",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "green onions",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "lemon juice",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "fresh dill",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "vegan pancakes",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "soy milk",
+     "role": "core",
+     "category": "beverage"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "maple syrup",
+     "role": "common",
+     "category": "sweetener"
+    },
+    {
+     "name": "whole wheat flour",
+     "role": "common",
+     "category": "baking"
+    },
+    {
+     "name": "canola oil",
+     "role": "common",
+     "category": "oil_fat"
+    }
+   ]
+  },
+  {
+   "name": "white chicken chili",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "onion",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chicken broth",
+     "role": "core",
+     "category": "other"
+    },
+    {
+     "name": "great northern beans",
+     "role": "core",
+     "category": "legume"
+    },
+    {
+     "name": "ground cumin",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "diced green chiles",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "chicken breast",
+     "role": "core",
+     "category": "meat"
+    },
+    {
+     "name": "garlic",
+     "role": "common",
+     "category": "produce"
+    },
+    {
+     "name": "monterey jack cheese",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "sour cream",
+     "role": "common",
+     "category": "dairy"
+    },
+    {
+     "name": "olive oil",
+     "role": "common",
+     "category": "oil_fat"
+    },
+    {
+     "name": "chili powder",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "dried oregano",
+     "role": "common",
+     "category": "spice_herb"
+    },
+    {
+     "name": "cayenne pepper",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  },
+  {
+   "name": "zucchini bread",
+   "cuisine": "american",
+   "ingredients": [
+    {
+     "name": "zucchini",
+     "role": "core",
+     "category": "produce"
+    },
+    {
+     "name": "baking soda",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "eggs",
+     "role": "core",
+     "category": "egg"
+    },
+    {
+     "name": "baking powder",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "sugar",
+     "role": "core",
+     "category": "sweetener"
+    },
+    {
+     "name": "ground cinnamon",
+     "role": "core",
+     "category": "spice_herb"
+    },
+    {
+     "name": "vanilla extract",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "all-purpose flour",
+     "role": "core",
+     "category": "baking"
+    },
+    {
+     "name": "vegetable oil",
+     "role": "core",
+     "category": "oil_fat"
+    },
+    {
+     "name": "walnuts",
+     "role": "common",
+     "category": "nut_seed"
+    },
+    {
+     "name": "ground nutmeg",
+     "role": "common",
+     "category": "spice_herb"
+    }
+   ]
+  }
+ ]
+}
