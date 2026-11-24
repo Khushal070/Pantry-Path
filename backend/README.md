@@ -45,6 +45,7 @@ Good to know when running it:
 - **Without store keys the chat still works.** A1 reads the chat and shows confirm cards; a search then says which keys are missing. The store providers are set up once at startup (so Kroger's token and 15-minute cache carry over between searches): restart the backend after editing `.env`.
 - **Kroger covers Kroger-family stores only** (Kroger, Ralphs, Fred Meyer, King Soopers, Harris Teeter and others), and some regions have none: New York City's 10010 has no store within 10 miles, for example. Such a search ends with a message that says so, without results and without running A3. Test with 45202, or add `REDCIRCLE_API_KEY` for Target.
 - **Ollama unloads the model after 5 idle minutes**, and the next message takes 15 to 45 s while it loads again. For a demo, keep it loaded: `OLLAMA_KEEP_ALIVE=1h ollama serve`. Warm, A1 takes about 3 s, A2 (a dish outside the catalog) about 20 s and A3 about 25 s on an Apple Silicon laptop.
+- **"Not right? Ask a stronger model".** A2 runs on the local champion, which knows popular dishes but can miss regional ones (for dal dhokli it used the wrong dal and left out the peanuts). With `LLM_API_KEY` set in `.env` (plus `LLM_PROVIDER` and `LLM_MODEL`, e.g. `gemini` and `gemini-3.6-flash`), a result whose ingredients a model worked out offers this button. It searches again with that hosted model working out the ingredients, with the champion's A2 prompt, and adds the new search under the first one, which stays as it was. Only the dish's name reaches the provider; verdicts still come from `diet_rules`. Without a key, or in demo mode, the button doesn't appear. Free tiers allow only a few requests a day, and a busy or used-up model ends that search with a message that says so (`app/stronger_model.py`).
 - **Checked on 2026-11-17** with Ollama 0.40.16 and `qwen3:4b-q4_K_M`: a full search with Kroger near 45202 (quiche, no milk or gluten, vegetarian): 3 Kroger stores and 180 products checked (42 safe, 114 not safe, 24 couldn't verify), then A3's list with steps, about 30 s after the confirm. Also A1 through the app (one message and two-message chats), A2 on a dish outside the catalog and A3 on a synthetic `result.json`. That run found A1 failing on chats without a ZIP: the model wrote `"zip": "null"` as a string. `normalize_zip` in `ml/src/pantrypath_ml/parse_request.py` now reads that as "no ZIP" (with a test). The A1 evaluation sets have no chat without a ZIP, though the app now relies on that case, since saved preferences hold the ZIP.
 
 ## Accounts
@@ -105,6 +106,7 @@ Everything except `config`, `health` and `/api/auth/*` needs a login, and answer
 | `POST /api/sessions/{id}/messages` | `{text}`: the shopper's message and the assistant's reply |
 | `POST /api/sessions/{id}/search` | `{message_id, query, zip, avoid, diet, servings}`: search a confirm card |
 | `POST /api/sessions/{id}/messages/{message_id}/rerun` | Search a confirmed request again |
+| `POST /api/sessions/{id}/messages/{message_id}/rerun-stronger` | Search it again with the stronger model working out the ingredients: a new search message. 409 for a catalog dish or one already redone, 503 without a stronger model |
 | `GET /api/jobs/{id}` | A search's stage, then its `result` (contract v1.0), `answer` and `warnings`; 404 once expired |
 
 The interactive docs are at http://localhost:8000/docs.
@@ -131,6 +133,8 @@ pip install -r requirements-dev.txt
 pytest                    # 69 tests, no network or model needed
 ruff check .
 ```
+
+`tests/test_stronger_model.py` covers "Ask a stronger model": the route and the messages it adds (with the demo engine and a stand-in), the live engine's client choice and error messages, and how `.env` turns it on; its live and `.env` tests skip without the live packages.
 
 `tests/test_live_outcome.py` covers how live mode reads A1's `ParseResult`, with stand-ins, so it runs without the model packages. Live mode has run end to end with the local model and Kroger (see Demo mode and live mode).
 
