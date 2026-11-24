@@ -51,13 +51,18 @@ class SearchOutcome:
     answer: dict[str, Any] | None = None   # A3's answer; None when A3 isn't available
     answer_status: str | None = None       # ok | repaired | invalid | unavailable
     warnings: list[str] = field(default_factory=list)
+    # Which model worked out the ingredients: {"a2": name, "stronger": bool}; a2 is None
+    # when the dish came from the catalog (no model involved)
+    model_used: dict[str, Any] | None = None
 
 
 class EngineError(Exception):
     """A search that failed in a way we can explain to the shopper.
 
     kind: not_found (no such dish), provider (the store search failed), data (reference
-    data missing on the server), model (the model server failed), invalid (bad request).
+    data missing on the server), model (the model server failed), invalid (bad request),
+    stronger_unavailable / stronger_busy / stronger_quota / stronger_failed (the stronger
+    model, stronger_model.py).
     """
 
     def __init__(self, message: str, *, kind: str = "error"):
@@ -76,4 +81,8 @@ class Engine(Protocol):
     def parse(self, messages: list[dict[str, str]]) -> ParseOutcome: ...
 
     def search(self, request: dict[str, Any], extras: dict[str, Any], clarify: list[str],
-               progress: Progress) -> SearchOutcome: ...
+               progress: Progress, *, stronger: bool = False) -> SearchOutcome:
+        """stronger: work out an unseen dish's ingredients with the stronger model
+        (stronger_model.py) instead of the champion; info()["stronger_model"] says whether
+        this engine has one."""
+        ...
