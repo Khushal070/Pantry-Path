@@ -45,7 +45,8 @@ class JobState:
                 "expires_at": self.expires_at,
                 "result": o.result if o else None, "answer": o.answer if o else None,
                 "answer_status": o.answer_status if o else None,
-                "warnings": o.warnings if o else []}
+                "warnings": o.warnings if o else [],
+                "model_used": o.model_used if o else None}
 
 
 def _result_expiry(outcome: SearchOutcome) -> datetime | None:

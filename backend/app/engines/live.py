@@ -6,12 +6,17 @@ Kroger keys in the repo-root .env. See backend/README.md.
 
 The models never decide what is safe: verdicts come from diet_rules inside build_result,
 and A3's answer is held to result.json by its own check before it gets here.
+
+A search with stronger=True works out an unseen dish's ingredients with the stronger
+model (stronger_model.py: the pipeline's own LLM client from .env) instead of the
+champion's A2. Everything else is the same.
 """
 
 import logging
 from typing import Any
 
 from app.engines.base import EngineError, Issue, ParseOutcome, Progress, SearchOutcome
+from app.stronger_model import detect, error_for
 from app.vocab import DIET_RANK
 
 log = logging.getLogger(__name__)
@@ -77,6 +82,9 @@ class LiveEngine:
                                "pip install -r requirements-live.txt (from backend/)") from exc
         self.cfg = load_config()
         self.models = runtime.load()
+        self.stronger = detect(self.cfg)
+        if not self.stronger.available:
+            log.info("No stronger model: %s", self.stronger.reason)
         # The store providers once, for the process: Kroger's token and its 15-minute
         # in-memory cache then carry over between searches (build_result would otherwise
         # make new ones every time). Without their keys the chat still works and searches
@@ -97,7 +105,9 @@ class LiveEngine:
                 "model": setting.get("models"), "prompt_versions": self.models.versions,
                 "a3_available": self.models.a3_available,
                 "stores": [p.name for p in self.providers or []],
-                "store_problem": self.store_problem}
+                "store_problem": self.store_problem,
+                "stronger_model": self.stronger.view(),
+                "stronger_problem": self.stronger.reason}
 
     def parse(self, messages: list[dict[str, str]]) -> ParseOutcome:
         parsed = self.models.parse(messages)
@@ -111,7 +121,7 @@ class LiveEngine:
         return outcome_from(parsed, in_catalog)
 
     def search(self, request: dict[str, Any], extras: dict[str, Any], clarify: list[str],
-               progress: Progress) -> SearchOutcome:
+               progress: Progress, *, stronger: bool = False) -> SearchOutcome:
         from pydantic import ValidationError
 
         from pantrypath_ml.parse_request import ParseResult
@@ -126,11 +136,16 @@ class LiveEngine:
         if self.providers is None:
             raise EngineError("The store search isn't set up on this server yet: "
                               f"{self.store_problem}", kind="config")
+        if stronger and not self.stronger.available:
+            raise EngineError("No stronger model is set up on this server "
+                              f"({self.stronger.reason}).", kind="stronger_unavailable")
         progress("searching")
         try:
+            # stronger: no client, so build_result uses the pipeline's .env client (with its
+            # own reply cache); the champion's A2 prompt either way
             result = build_result(self.cfg, request["query"], request["zip"], request["avoid"],
                                   request["diet"], providers=self.providers,
-                                  llm_client=self.models.a2_client,
+                                  llm_client=None if stronger else self.models.a2_client,
                                   llm_template=self.models.a2_template)
         except ValidationError as exc:
             raise EngineError(f"That request isn't valid: {exc.errors()[0]['msg']}",
@@ -143,6 +158,8 @@ class LiveEngine:
             raise EngineError("The server is missing its reference data (dish catalog or "
                               "allergen snapshot): run dvc pull.", kind="data") from exc
         except LLMError as exc:
+            if stronger:
+                raise error_for(exc, self.stronger.label or "The stronger model") from exc
             raise EngineError(f"I couldn't work out the ingredients of \"{request['query']}\". "
                               "Try another dish, or name it differently.",
                               kind="not_found") from exc
@@ -156,8 +173,14 @@ class LiveEngine:
                                                 [p.name for p in self.providers]),
                               kind="no_stores")
         payload = result.model_dump(mode="json")
+        generated = payload["dish"]["source"] != "catalog"   # A2 worked out the ingredients
+        a2 = None
+        if generated:
+            a2 = self.stronger.label if stronger else self.models.setting.get("candidate")
+        model_used = {"a2": a2, "stronger": stronger and generated}
         if not self.models.a3_available:
-            return SearchOutcome(result=payload, answer_status="unavailable")
+            return SearchOutcome(result=payload, answer_status="unavailable",
+                                 model_used=model_used)
         progress("answering")
         parsed = ParseResult("ok", request=request, extras=extras, clarify=clarify)
         try:
@@ -166,6 +189,6 @@ class LiveEngine:
             log.exception("A3 failed; returning result.json without an answer")
             return SearchOutcome(result=payload, answer_status="failed", warnings=[
                 "The shopping list writer didn't answer, so here are the store results as "
-                "they are."])
+                "they are."], model_used=model_used)
         return SearchOutcome(result=payload, answer=reply.answer, answer_status=reply.status,
-                             warnings=list(reply.warnings))
+                             warnings=list(reply.warnings), model_used=model_used)

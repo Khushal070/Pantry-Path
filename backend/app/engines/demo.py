@@ -504,13 +504,18 @@ class DemoEngine:
         return {"mode": self.mode, "dishes": len(self.catalog.dishes),
                 "examples": ["quiche lorraine", "pad thai", "chicken tikka masala",
                              "banana bread", "vegan pancakes"],
-                "a3_available": True}
+                "a3_available": True,
+                # the demo's dishes all come from its catalog: nothing for a stronger
+                # model to redo
+                "stronger_model": {"available": False, "label": None}}
 
     def parse(self, messages: list[dict[str, str]]) -> ParseOutcome:
         return read_chat(messages, self.catalog)
 
     def search(self, request: dict[str, Any], extras: dict[str, Any], clarify: list[str],
-               progress: Progress) -> SearchOutcome:
+               progress: Progress, *, stronger: bool = False) -> SearchOutcome:
+        if stronger:
+            raise EngineError("The demo has no stronger model.", kind="stronger_unavailable")
         dish = self.catalog.by_name.get(request["query"]) or self.catalog.match(request["query"])
         if dish is None:
             raise EngineError(

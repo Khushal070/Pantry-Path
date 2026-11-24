@@ -153,6 +153,9 @@ class Job(BaseModel):
     answer: dict[str, Any] | None = None   # A3's answer; None when A3 isn't available
     answer_status: str | None = None
     warnings: list[str] = Field(default_factory=list)
+    # {"a2": model name or None (catalog dish), "stronger": bool}: who worked out the
+    # ingredients (stronger_model.py)
+    model_used: dict[str, Any] | None = None
 
 
 class ChatReply(BaseModel):
