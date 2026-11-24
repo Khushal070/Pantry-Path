@@ -10,7 +10,8 @@ A session's messages, in the order the shopper sees them:
   the newest message can be confirmed, so a correction typed after a card replaces it.
 - search: a confirmed request and the id of its search. The results stay in memory
   (jobs.py); the message keeps only the request, the dish name and the outcome, so the
-  search can be run again after the results expire.
+  search can be run again after the results expire. "Ask a stronger model" adds a new
+  search message (data.stronger, data.redo_of), so the first answer stays as it was.
 - error: something went wrong on our side.
 """
 
@@ -46,6 +47,10 @@ class ConflictError(Exception):
 
 class InvalidRequestError(Exception):
     pass
+
+
+class UnavailableError(Exception):
+    """Something this server isn't set up to do (no stronger model)."""
 
 
 def _now() -> str:
@@ -236,12 +241,59 @@ class ChatService:
                         m["data"].update(job_id=job.id, status="running", error=None)
 
             session = self._update(user, session_id, change)
+        # a search that asked for the stronger model asks for it again
         self._submit(job, session_id, message_id, data["request"], data.get("extras") or {},
-                     data.get("clarify") or [])
+                     data.get("clarify") or [], stronger=bool(data.get("stronger")))
+        return session, job
+
+    def ask_stronger(self, user: User, session_id: str,
+                     message_id: str) -> tuple[dict[str, Any], JobState]:
+        """Search a request again with the stronger model working out the ingredients
+        (the shopper said the first ones look wrong). Adds a new search message, so the
+        first answer stays as it was."""
+        offer = self.engine.info().get("stronger_model") or {}
+        if not offer.get("available"):
+            raise UnavailableError("No stronger model is set up on this server.")
+        label = offer.get("label") or "a stronger model"
+        with self.store.locked():
+            session = self.get_session(user, session_id)
+            message = next((m for m in session["messages"] if m["id"] == message_id), None)
+            if message is None or message["kind"] != "search":
+                raise NotFoundError(f"No search {message_id} in this chat")
+            data = message["data"]
+            if data.get("stronger"):
+                raise ConflictError(f"These ingredients already come from {label}.")
+            if any((m["data"] or {}).get("redo_of") == message_id for m in session["messages"]):
+                raise ConflictError(f"You already asked {label} about this search: its "
+                                    "answer is below.")
+            current = self.jobs.get(data["job_id"])
+            if current is not None and current.status == "running":
+                raise ConflictError("This search is still running: wait for it to finish.")
+            outcome = current.outcome if current is not None else None
+            if outcome is not None and outcome.result["dish"]["source"] == "catalog":
+                raise ConflictError("This dish comes from our catalog, so there's nothing for "
+                                    "a stronger model to redo.")
+            request, extras = data["request"], data.get("extras") or {}
+            clarify = data.get("clarify") or []
+            job = self.jobs.create(owner=user["id"])
+            search = _message("assistant", "search",
+                              f"{request_line(request, extras.get('servings'))}, "
+                              f"ingredients by {label}",
+                              {"job_id": job.id, "request": request, "extras": extras,
+                               "clarify": clarify, "status": "running", "stronger": True,
+                               "redo_of": message_id})
+
+            def change(s: dict[str, Any]) -> None:
+                s["messages"].append(search)
+                s["context_start"] = len(s["messages"])   # the next message starts afresh
+
+            session = self._update(user, session_id, change)
+        self._submit(job, session_id, search["id"], request, extras, clarify, stronger=True)
         return session, job
 
     def _submit(self, job: JobState, session_id: str, message_id: str,
-                request: dict[str, Any], extras: dict[str, Any], clarify: list[str]) -> None:
+                request: dict[str, Any], extras: dict[str, Any], clarify: list[str],
+                stronger: bool = False) -> None:
         def on_finish(done: JobState) -> None:
             def change(s: dict[str, Any]) -> None:
                 for m in s["messages"]:
@@ -255,8 +307,12 @@ class ChatService:
             if self.store.update("sessions", session_id, change) is None:
                 log.info("Chat %s was deleted before its search finished", session_id)
 
+        # stronger is passed only when asked for, so an engine without the option (or a
+        # test stand-in) keeps working
+        options = {"stronger": True} if stronger else {}
         self.jobs.submit(job, lambda progress: self.engine.search(request, extras, clarify,
-                                                                  progress), on_finish)
+                                                                  progress, **options),
+                         on_finish)
 
     def job(self, user: User, job_id: str) -> dict[str, Any]:
         job = self.jobs.get(job_id)

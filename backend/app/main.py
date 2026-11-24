@@ -28,7 +28,13 @@ from app.auth import (
     WrongPasswordError,
     public,
 )
-from app.chat import ChatService, ConflictError, InvalidRequestError, NotFoundError
+from app.chat import (
+    ChatService,
+    ConflictError,
+    InvalidRequestError,
+    NotFoundError,
+    UnavailableError,
+)
 from app.engines import Engine, make_engine
 from app.jobs import Jobs
 from app.schemas import (
@@ -108,7 +114,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     for exc_type, code in ((NotFoundError, 404), (ConflictError, 409),
                            (InvalidRequestError, 422), (AuthError, 401),
                            (WrongPasswordError, 403), (ThrottledError, 429),
-                           (UsernameTakenError, 409)):
+                           (UsernameTakenError, 409), (UnavailableError, 503)):
         app.add_exception_handler(exc_type, error(code))
 
     @app.exception_handler(StoreError)
@@ -123,9 +129,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     @app.get("/api/config")
     def config(request: Request) -> dict[str, Any]:
         """What the app needs to draw its forms, and which engine answers."""
+        info = chat(request).engine.info()
         return {
             "mode": chat(request).engine.mode,
-            "engine": chat(request).engine.info(),
+            "engine": info,
+            # "Not right? Ask a stronger model" (stronger_model.py): off without a key
+            "stronger_model": info.get("stronger_model") or {"available": False, "label": None},
             "allergens": [{"id": a, "label": ALLERGEN_LABELS[a]} for a in ALLERGENS],
             "diets": [{"id": d, "label": DIET_LABELS[d]} for d in DIETS],
             "needs": [{"id": n, "label": NEED_LABELS[n]} for n in NEEDS],
@@ -209,6 +218,16 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
               response_model=ChatReply)
     def rerun(session_id: str, message_id: str, user: Me, request: Request) -> dict[str, Any]:
         session, job = chat(request).rerun_search(user, session_id, message_id)
+        return {"session": session, "job": job.view()}
+
+    @app.post("/api/sessions/{session_id}/messages/{message_id}/rerun-stronger",
+              response_model=ChatReply)
+    def rerun_stronger(session_id: str, message_id: str, user: Me,
+                       request: Request) -> dict[str, Any]:
+        """Search again with the stronger model working out the ingredients: a new search
+        message. 409 for a catalog dish or one already redone, 503 without a stronger
+        model."""
+        session, job = chat(request).ask_stronger(user, session_id, message_id)
         return {"session": session, "job": job.view()}
 
     @app.get("/api/jobs/{job_id}", response_model=Job)
