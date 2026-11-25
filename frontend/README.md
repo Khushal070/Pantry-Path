@@ -24,6 +24,7 @@ npm run dev        # http://localhost:5173; /api goes to the backend on :8000
   - **Stores**, with how many items to buy at each (and a route link in live mode).
   - **Every product checked**: each product's verdict (Safe, Not safe, Couldn't verify), reason and evidence source.
   - **Steps**, when the model wrote them, plus the warnings and the Open Food Facts attribution.
+  - **"Not right? Ask a stronger model"**, under the title of a dish whose ingredients a model worked out, when the backend has a stronger model (`stronger_model` in `/api/config`). It searches again with that model; the new search appears below and this one stays. A redone result says which model worked out its ingredients.
 - **Old chats** reopen from the sidebar, each user seeing only their own. Their store results expire, because store data is never saved, and one click searches again.
 - Light and dark themes, and a phone layout with a drawer menu.
 
