@@ -90,5 +90,8 @@ export const api = {
     }),
   rerun: (sessionId: string, messageId: string) =>
     call<ChatReply>("POST", `/sessions/${sessionId}/messages/${messageId}/rerun`),
+  /** Search again with the stronger model working out the ingredients: a new search message. */
+  rerunStronger: (sessionId: string, messageId: string) =>
+    call<ChatReply>("POST", `/sessions/${sessionId}/messages/${messageId}/rerun-stronger`),
   job: (id: string) => call<Job>("GET", `/jobs/${id}`),
 };

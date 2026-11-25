@@ -9,9 +9,22 @@ export interface Option {
   label: string;
 }
 
+/** "Not right? Ask a stronger model" (backend/app/stronger_model.py): off without a key. */
+export interface StrongerModel {
+  available: boolean;
+  label: string | null; // e.g. "Gemini"
+}
+
+/** Who worked out a result's ingredients. a2 is null for a dish from the catalog. */
+export interface ModelUsed {
+  a2: string | null;
+  stronger: boolean;
+}
+
 export interface AppConfig {
   mode: "demo" | "live";
   engine: { a3_available?: boolean; examples?: string[]; [key: string]: unknown };
+  stronger_model?: StrongerModel;
   allergens: Option[];
   diets: Option[];
   needs: Option[];
@@ -68,6 +81,8 @@ export interface SearchData {
   dish?: string;
   error?: string | null;
   error_kind?: string | null;
+  stronger?: boolean; // searched again with the stronger model
+  redo_of?: string; // the search message it redoes
 }
 
 export interface Message {
@@ -174,6 +189,7 @@ export interface Job {
   answer: Answer | null;
   answer_status: string | null;
   warnings: string[];
+  model_used?: ModelUsed | null;
 }
 
 export interface ChatReply {
