@@ -11,19 +11,66 @@ import {
   routeLink,
   storeLink,
 } from "../format";
-import { AlertIcon, CheckIcon, QuestionIcon, RouteIcon, StoreIcon, XIcon } from "../icons";
+import { AlertIcon, CheckIcon, QuestionIcon, RefreshIcon, RouteIcon, StoreIcon, XIcon } from "../icons";
 
 type Tab = "list" | "stores" | "products" | "steps";
 const VERDICT_ORDER: Record<Verdict, number> = { safe: 0, unknown: 1, unsafe: 2 };
+
+/** The local model works out the ingredients of a dish the catalog doesn't have, and can
+ * get regional dishes wrong. The shopper can ask a stronger model to redo them: a new
+ * search appears below, and this answer stays. Once redone, the result says which model. */
+function StrongerModelOffer({
+  job,
+  stronger,
+}: {
+  job: Job;
+  stronger: { label: string; onAsk: () => Promise<void> } | null;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const used = job.model_used;
+  if (used?.stronger) {
+    return <span className="tag stronger-tag">Ingredients by {used.a2 ?? "a stronger model"}</span>;
+  }
+  if (!stronger || (job.result as Result).dish.source === "catalog") return null;
+
+  async function ask() {
+    if (!stronger) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await stronger.onAsk();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="stronger">
+      <button className="btn ghost small" onClick={ask} disabled={busy}>
+        <RefreshIcon size={14} /> {busy ? "Starting…" : "Not right? Ask a stronger model"}
+      </button>
+      <small className="muted">
+        Sends only the dish name to {stronger.label}. Store data is never shared.
+      </small>
+      {error && <p className="form-error">{error}</p>}
+    </div>
+  );
+}
 
 export function ResultView({
   job,
   mode,
   listKey,
+  stronger = null,
 }: {
   job: Job;
   mode: "demo" | "live";
   listKey: string; // where this search's ticked items are kept
+  // "Not right? Ask a stronger model": offered when a model worked out the ingredients
+  stronger?: { label: string; onAsk: () => Promise<void> } | null;
 }) {
   const result = job.result as Result;
   const answer = job.answer;
@@ -50,6 +97,7 @@ export function ResultView({
             {result.dish.source === "llm" ? "ingredients worked out for this dish" : "from our dish catalog"}
           </div>
           <h3 className="result-title">{cap(result.dish.name)}</h3>
+          <StrongerModelOffer job={job} stronger={stronger} />
         </div>
         <div className="meter" title={`${safe} of ${total} ingredients have a safe product`}>
           <div className="meter-label">

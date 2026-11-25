@@ -266,6 +266,28 @@ em {
   color: var(--unknown);
 }
 
+/* "Not right? Ask a stronger model" under a result's title (ResultView) */
+.stronger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 8px;
+}
+
+.stronger small {
+  font-size: 12px;
+}
+
+.stronger .form-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.stronger-tag {
+  margin-top: 8px;
+}
+
 /* ---------------------------------------------------------------- layout */
 
 .app {

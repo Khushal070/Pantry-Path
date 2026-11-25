@@ -164,6 +164,12 @@ export default function App() {
     setSession(reply.session);
   }
 
+  async function askStronger(message: Message) {
+    if (!session) return;
+    const reply = await api.rerunStronger(session.id, message.id); // errors show on the result
+    setSession(reply.session);
+  }
+
   if (loadError) {
     return (
       <div className="splash">
@@ -216,6 +222,7 @@ export default function App() {
           onSend={send}
           onConfirm={confirm}
           onRerun={rerun}
+          onAskStronger={askStronger}
           onEditPreferences={() => setDialog("preferences")}
           onOpenMenu={() => setMenuOpen(true)}
         />

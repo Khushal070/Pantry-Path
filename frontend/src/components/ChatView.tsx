@@ -21,6 +21,7 @@ export function ChatView({
   onSend,
   onConfirm,
   onRerun,
+  onAskStronger,
   onEditPreferences,
   onOpenMenu,
 }: {
@@ -31,6 +32,7 @@ export function ChatView({
   onSend: (text: string) => Promise<boolean>;
   onConfirm: (message: Message, request: SearchRequest, servings: number | null) => Promise<void>;
   onRerun: (message: Message) => Promise<void>;
+  onAskStronger: (message: Message) => Promise<void>;
   onEditPreferences: () => void;
   onOpenMenu: () => void;
 }) {
@@ -132,6 +134,7 @@ export function ChatView({
               actionable={m === last && m.kind === "confirm" && !m.data?.submitted && pendingText === null}
               onConfirm={(request, servings) => onConfirm(m, request, servings)}
               onRerun={() => onRerun(m)}
+              onAskStronger={() => onAskStronger(m)}
             />
           ))}
 
@@ -193,12 +196,14 @@ function MessageView({
   actionable,
   onConfirm,
   onRerun,
+  onAskStronger,
 }: {
   message: Message;
   config: AppConfig;
   actionable: boolean;
   onConfirm: (request: SearchRequest, servings: number | null) => Promise<void>;
   onRerun: () => Promise<void>;
+  onAskStronger: () => Promise<void>;
 }) {
   if (message.role === "user") {
     return (
@@ -211,7 +216,15 @@ function MessageView({
   if (message.kind === "confirm") {
     body = <ConfirmCard message={message} config={config} actionable={actionable} onConfirm={onConfirm} />;
   } else if (message.kind === "search") {
-    body = <SearchCard message={message} mode={config.mode} onRerun={onRerun} />;
+    body = (
+      <SearchCard
+        message={message}
+        mode={config.mode}
+        stronger={config.stronger_model}
+        onRerun={onRerun}
+        onAskStronger={onAskStronger}
+      />
+    );
   } else if (message.kind === "error") {
     body = (
       <div className="bubble assistant error" role="alert">

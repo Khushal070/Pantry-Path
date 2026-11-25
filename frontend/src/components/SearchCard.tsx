@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
-import type { Job, Message, SearchData } from "../types";
+import type { Job, Message, SearchData, StrongerModel } from "../types";
 import { cap } from "../format";
 import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from "../icons";
 import { ResultView } from "./ResultView";
@@ -12,11 +12,15 @@ const POLL_MS = 1000;
 export function SearchCard({
   message,
   mode,
+  stronger,
   onRerun,
+  onAskStronger,
 }: {
   message: Message;
   mode: "demo" | "live";
+  stronger?: StrongerModel;
   onRerun: () => Promise<void>;
+  onAskStronger?: () => Promise<void>;
 }) {
   const data = message.data as unknown as SearchData;
   const [job, setJob] = useState<Job | null>(null);
@@ -111,7 +115,14 @@ export function SearchCard({
     );
   }
   if (job?.status === "done" && job.result) {
-    return <ResultView job={job} mode={mode} listKey={`pantrypath.ticked.${message.id}`} />;
+    // offered on the first search only: a redone one shows which model it used instead
+    const offer =
+      stronger?.available && onAskStronger && !data.stronger
+        ? { label: stronger.label ?? "a stronger model", onAsk: onAskStronger }
+        : null;
+    return (
+      <ResultView job={job} mode={mode} listKey={`pantrypath.ticked.${message.id}`} stronger={offer} />
+    );
   }
   return <Progress job={job} query={dish} mode={mode} offline={offline} />;
 }
