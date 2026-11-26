@@ -375,9 +375,18 @@ ZIP_IN_TEXT = re.compile(r"(?<![\d-])(\d{5})(?:-\d{4})?(?![\d-])")
 ZIP_FULL = re.compile(r"\s*(\d{5})(?:-\d{4})?\s*")
 
 
+# What the model writes for "no ZIP" when it fills the JSON string instead of using null
+# (seen live with qwen3:4b on a chat without a ZIP: "zip": "null")
+NO_ZIP_WORDS = {"", "null", "none", "n/a", "na", "unknown"}
+
+
 def normalize_zip(value: Any) -> Any:
-    """'02115-1234' -> '02115'; anything else is returned unchanged for validation."""
+    """'02115-1234' -> '02115'; a word for "no ZIP" ("null", "none", "") -> None, so a chat
+    without a ZIP is incomplete instead of an unusable reply; anything else is returned
+    unchanged for validation."""
     if isinstance(value, str):
+        if value.strip().lower() in NO_ZIP_WORDS:
+            return None
         m = ZIP_FULL.fullmatch(value)
         if m:
             return m.group(1)

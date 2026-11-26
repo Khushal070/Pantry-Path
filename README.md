@@ -8,14 +8,14 @@ A conversational food finder for people with special diets. You say what you wan
 
 Built by Project Team 11.
 
-> Early development. The commands under Installation and Usage describe the planned setup and will be updated as the code lands.
+> Early development. The app runs in **demo mode** out of the box: synthetic stores, with no model server, store keys or DVC data needed. Live mode uses the champion model and live store data (see [backend/README.md](backend/README.md)).
 
 ## How it works
 
 - A self-hosted open-weight language model reads the conversation and adapts the recipe to your diet.
 - Deterministic diet rules, not the model, decide whether a product fits a diet. Unknown evidence is never shown as safe.
 - Searches start with the first message, and everything found is cached for the session, so changing your mind does not repeat any search.
-- One preloaded demo profile, no login or payments, and live data only.
+- Accounts with a username and password, each with saved food preferences (allergies, diet, ZIP), stored as JSON files with no database. No payments, and live data only.
 
 Diets covered: allergies, celiac, pregnancy, medical (for example low-sodium or diabetic), religious (for example halal or kosher) and lifestyle (for example vegan).
 
@@ -42,8 +42,8 @@ Large datasets are not stored in git. They are versioned with DVC.
 
 ## Repository structure
 
-- `backend/` - FastAPI service: chat orchestrator, provider adapters, diet rules engine, cache, package matcher, route optimizer
-- `frontend/` - React chat app
+- `backend/` - FastAPI chat API: accounts, preferences and chats saved as JSON files, the chat flow (request parsing, confirm, store search, answer), store results in memory only (see [backend/README.md](backend/README.md))
+- `frontend/` - React chat app: login, preferences, chat, shopping list, stores and product checks (see [frontend/README.md](frontend/README.md))
 - `ml/` - prompts, model and serving configuration, evaluation and fine-tuning scripts (see [docs/model-pipeline-report.md](docs/model-pipeline-report.md) and the [guideline compliance table](ml/README.md#guideline-compliance))
 - `data/` - diet rules, demo personas, golden evaluation sets, DVC pointers
 - `data-pipeline/` - Airflow data pipeline: dish catalog, Open Food Facts allergen snapshot, request flow that writes `result.json` (see [data-pipeline/README.md](data-pipeline/README.md) and [docs/data-pipeline-handoff.md](docs/data-pipeline-handoff.md))
@@ -56,18 +56,18 @@ Large datasets are not stored in git. They are versioned with DVC.
 
 The data pipeline is set up and run on its own, with Airflow: see [data-pipeline/README.md](data-pipeline/README.md). The steps below are for the app.
 
-Prerequisites: Python 3.11+, Node.js 20+ and Git. For the model, Ollama for local development, or a GPU machine with vLLM.
+Prerequisites: Python 3.12, Node.js 20+ and Git. For live mode, also Ollama for local development, or a GPU machine with vLLM.
 
 1. Clone the repository:
    ```sh
    git clone https://github.com/Khushal070/Pantry-Path.git
    cd Pantry-Path
    ```
-2. Copy `.env.example` to `.env` and fill in the values (Kroger API credentials, model server URL).
-3. Install the backend:
+2. Copy `.env.example` to `.env`. Demo mode needs no values. Live mode needs `PANTRYPATH_MODE=live`, the Kroger API credentials and, for a remote model server, its URL.
+3. Install the backend (`requirements.txt` is demo mode; `requirements-live.txt` adds the model and pipeline packages for live mode):
    ```sh
    cd backend
-   python -m venv .venv
+   python3.12 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
@@ -76,22 +76,22 @@ Prerequisites: Python 3.11+, Node.js 20+ and Git. For the model, Ollama for loca
    cd frontend
    npm install
    ```
-5. Get the default model (set in `.env.example`) for local development:
+5. Live mode only: get the champion model (`ml/registry/champion.json`) for local development:
    ```sh
-   ollama pull qwen2.5:7b-instruct
+   ollama pull qwen3:4b-q4_K_M
    ```
-6. Get the versioned datasets (the DVC remote is public, so no login is needed):
+6. Live mode only: get the versioned datasets (the DVC remote is public, so no login is needed):
    ```sh
    dvc pull
    ```
 
 ## Usage
 
-1. Start the model server: `ollama serve` (or the vLLM server on a GPU machine).
+1. Live mode only: start the model server, `ollama serve` (or the vLLM server on a GPU machine).
 2. Start the backend: `cd backend && uvicorn app.main:app --reload`. The API runs at http://localhost:8000.
 3. Start the frontend: `cd frontend && npm run dev`, then open the URL it prints (http://localhost:5173 by default).
-4. The demo profile loads automatically. Type what you want to eat, for example "I feel like quiche tonight", answer the assistant's questions and confirm the recipe. You get the shopping list, the store list and the route.
-5. Run the tests with `pytest`. Model evaluations live in `evals/`.
+4. Create an account and set your food preferences (allergies, diet, ZIP). Type what you want to eat, for example "I feel like quiche tonight", answer the assistant's questions and confirm the request. You get the shopping list, the store list and every product's check.
+5. Run the tests with `pytest` in `backend/`, `ml/`, `data-pipeline/` and `shared/`. Model evaluations live in `ml/`.
 
 ## Team
 

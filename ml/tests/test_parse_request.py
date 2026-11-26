@@ -216,6 +216,16 @@ def test_missing_zip_is_incomplete(prcfg):
     assert result.request is None and result.fields["query"] == "pad thai"
 
 
+@pytest.mark.parametrize("no_zip", ["null", "None", " ", "n/a"])
+def test_a_word_for_no_zip_is_no_zip(prcfg, no_zip):
+    # qwen3:4b wrote "zip": "null" (a string) for a chat without a ZIP: that is a missing
+    # ZIP, not an unusable reply worth a retry
+    client = ScriptedClient(lambda p: answer(query="brownies", zip=no_zip))
+    result = parse_request(prcfg, user("brownies for 6"), client)
+    assert result.status == "incomplete" and result.missing == ["zip"]
+    assert result.attempts == 1 and result.fields["zip"] is None
+
+
 def test_a_nut_allergy_needs_confirmation_about_peanuts(prcfg):
     result = parse_request(prcfg, user("pad thai 02115, I have a nut allergy"),
                            ScriptedClient(lambda p: answer(avoid=["tree_nuts"])))

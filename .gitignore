@@ -33,3 +33,7 @@ ml/cache/
 ml/reports/*
 !ml/reports/final/
 ml/pytest-report.xml
+
+# Backend: profiles and chats saved as JSON where the backend runs (data, not code)
+backend/data/*
+!backend/data/.gitkeep

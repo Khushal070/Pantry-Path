@@ -1,0 +1,4 @@
+# Tests: pip install -r requirements-dev.txt (from backend/), then pytest
+-r requirements.txt
+pytest==9.1.1
+httpx==0.28.1

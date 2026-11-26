@@ -1,0 +1,8 @@
+# Pantry Path backend, live mode: the champion's A1/A2/A3 (pantrypath_ml.runtime) and the
+# data pipeline's request flow (build_result). ml/requirements.txt already pins FastAPI and
+# uvicorn. Install from backend/:
+#   pip install -r requirements-live.txt
+-r ../ml/requirements.txt
+-e ../shared
+-e ../data-pipeline
+-e ../ml
