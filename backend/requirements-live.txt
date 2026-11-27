@@ -6,3 +6,6 @@
 -e ../shared
 -e ../data-pipeline
 -e ../ml
+# Postgres for accounts and profiles; the rest of requirements.txt's database packages
+# already come pinned at the same versions through ml/requirements.txt
+psycopg[binary]==3.3.9

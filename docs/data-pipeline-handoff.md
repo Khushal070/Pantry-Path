@@ -170,6 +170,24 @@ payload = result.model_dump(mode="json")
 - `build_result` is blocking (it uses threads inside). In FastAPI, declare the endpoint with `def` (not `async def`) or wrap it with `run_in_threadpool`.
 - Load the config once at startup and reuse it.
 
+**Search a list you already have:** `build_result` first finds the dish's ingredients (catalog, else the LLM), then searches them. When the ingredients are already decided (the backend's guided builds let the shopper choose them), call the second half directly:
+```python
+from types import SimpleNamespace
+
+from pantrypath_core.result import DishInfo, RequestInfo
+from pantrypath_pipeline.request import result_for_ingredients
+
+request = RequestInfo(query="sandwich", zip="45202", avoid=["peanuts"], diet="vegetarian")
+ingredients = [SimpleNamespace(name="sourdough bread", role="core", category="bakery"),
+               SimpleNamespace(name="pineapple", role="common", category="other")]
+result = result_for_ingredients(
+    cfg, request, DishInfo(name="sandwich", cuisine="american", source="llm"),
+    ingredients, catalog_version="guided")   # providers=... to reuse the backend's
+```
+- Each ingredient needs `name` (also the search term), `role` (`core` or `common`) and `category` (one of the catalog's categories); a `CatalogIngredient` works as is.
+- It returns the same `result.json` as `build_result`, with the same rules: the same store search and Target fallback, the same verdicts, `expires_at`, and nothing stored. Its errors are the ones below, apart from the LLM ones.
+- `build_result` is now the dish lookup followed by `result_for_ingredients`; its behaviour and tests are unchanged.
+
 **Errors** (all subclasses of `pantrypath_pipeline.errors.PipelineError`):
 
 | Error | When | Suggested HTTP status |

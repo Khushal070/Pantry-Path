@@ -1,0 +1,27 @@
+# Kinds of a generic catalog ingredient, so a guided build (app/plans.py) can offer a
+# choice without a model call. Keyed by the catalog's ingredient name (exact, lower-case).
+# `default` is ticked when the catalog ingredient is a usual one; the others start
+# unticked. Every kind is still screened against the shopper's allergens and diet.
+variants:
+  sandwich bread:
+    default: white bread
+    kinds: [white bread, whole wheat bread, sourdough bread, rye bread, gluten-free bread]
+  bread:
+    default: white bread
+    kinds: [white bread, whole wheat bread, sourdough bread, gluten-free bread]
+  cheddar cheese:
+    default: cheddar cheese
+    kinds: [cheddar cheese, monterey jack cheese, swiss cheese, mozzarella cheese,
+            dairy-free cheese]
+  tortillas:
+    default: flour tortillas
+    kinds: [flour tortillas, corn tortillas, whole wheat tortillas]
+  lettuce:
+    default: romaine lettuce
+    kinds: [romaine lettuce, iceberg lettuce, mixed greens, spinach]
+  spaghetti:
+    default: spaghetti
+    kinds: [spaghetti, whole wheat spaghetti, gluten-free spaghetti]
+  white rice:
+    default: white rice
+    kinds: [white rice, brown rice, jasmine rice]

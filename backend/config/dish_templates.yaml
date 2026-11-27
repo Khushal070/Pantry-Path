@@ -1,0 +1,192 @@
+# Build-your-own plans for dishes that are a kind of food rather than one recipe
+# ("sandwich"), used by guided builds (app/plans.py) before any model call: instant, and
+# the same every time. A request matches a template when its dish name, lower-case, is the
+# key or one of its `names`. Options marked usual start ticked; every option is screened
+# against the shopper's allergens and diet. Categories are the catalog's.
+templates:
+  sandwich:
+    names: [sandwiches, sub, subs, hoagie, a sandwich]
+    cuisine: american
+    steps:
+      - label: Bread
+        options:
+          - {name: white bread, category: bakery, usual: true}
+          - {name: whole wheat bread, category: bakery}
+          - {name: sourdough bread, category: bakery}
+          - {name: rye bread, category: bakery}
+          - {name: hoagie rolls, category: bakery}
+          - {name: gluten-free bread, category: bakery}
+      - label: Protein
+        options:
+          - {name: sliced turkey, category: meat, usual: true}
+          - {name: ham, category: meat}
+          - {name: roast beef, category: meat}
+          - {name: chicken breast, category: meat}
+          - {name: canned tuna, category: seafood}
+          - {name: eggs, category: egg}
+          - {name: tofu, category: legume}
+          - {name: hummus, category: legume}
+      - label: Cheese
+        options:
+          - {name: cheddar cheese, category: dairy, usual: true}
+          - {name: swiss cheese, category: dairy}
+          - {name: provolone cheese, category: dairy}
+          - {name: mozzarella cheese, category: dairy}
+          - {name: dairy-free cheese, category: dairy}
+      - label: Vegetables
+        options:
+          - {name: lettuce, category: produce, usual: true}
+          - {name: tomatoes, category: produce, usual: true}
+          - {name: red onion, category: produce}
+          - {name: cucumber, category: produce}
+          - {name: avocado, category: produce}
+          - {name: pickles, category: condiment}
+          - {name: spinach, category: produce}
+      - label: Sauces
+        options:
+          - {name: mayonnaise, category: condiment, usual: true}
+          - {name: yellow mustard, category: condiment}
+          - {name: dijon mustard, category: condiment}
+          - {name: pesto, category: condiment}
+          - {name: ranch dressing, category: condiment}
+          - {name: hot sauce, category: condiment}
+  salad:
+    names: [a salad, green salad, salads]
+    cuisine: american
+    steps:
+      - label: Greens
+        options:
+          - {name: romaine lettuce, category: produce, usual: true}
+          - {name: mixed greens, category: produce}
+          - {name: spinach, category: produce}
+          - {name: kale, category: produce}
+          - {name: arugula, category: produce}
+      - label: Vegetables
+        options:
+          - {name: tomatoes, category: produce, usual: true}
+          - {name: cucumber, category: produce, usual: true}
+          - {name: carrots, category: produce}
+          - {name: red onion, category: produce}
+          - {name: bell pepper, category: produce}
+          - {name: avocado, category: produce}
+      - label: Protein
+        options:
+          - {name: chicken breast, category: meat}
+          - {name: hard-boiled eggs, category: egg}
+          - {name: chickpeas, category: legume}
+          - {name: tofu, category: legume}
+          - {name: canned tuna, category: seafood}
+      - label: Toppings
+        options:
+          - {name: croutons, category: bakery}
+          - {name: feta cheese, category: dairy}
+          - {name: parmesan cheese, category: dairy}
+          - {name: sunflower seeds, category: nut_seed}
+          - {name: walnuts, category: nut_seed}
+      - label: Dressing
+        options:
+          - {name: olive oil, category: oil_fat, usual: true}
+          - {name: balsamic vinegar, category: condiment, usual: true}
+          - {name: ranch dressing, category: condiment}
+          - {name: caesar dressing, category: condiment}
+          - {name: lemon juice, category: produce}
+  pasta:
+    names: [some pasta, pasta dish]
+    cuisine: european
+    steps:
+      - label: Pasta
+        options:
+          - {name: spaghetti, category: grain, usual: true}
+          - {name: penne pasta, category: grain}
+          - {name: fusilli pasta, category: grain}
+          - {name: whole wheat pasta, category: grain}
+          - {name: gluten-free pasta, category: grain}
+      - label: Sauce
+        options:
+          - {name: marinara sauce, category: condiment, usual: true}
+          - {name: alfredo sauce, category: condiment}
+          - {name: pesto, category: condiment}
+          - {name: olive oil, category: oil_fat}
+      - label: Protein
+        options:
+          - {name: ground beef, category: meat}
+          - {name: italian sausage, category: meat}
+          - {name: chicken breast, category: meat}
+          - {name: shrimp, category: seafood}
+          - {name: chickpeas, category: legume}
+      - label: Vegetables
+        options:
+          - {name: garlic, category: produce, usual: true}
+          - {name: onion, category: produce}
+          - {name: mushrooms, category: produce}
+          - {name: spinach, category: produce}
+          - {name: zucchini, category: produce}
+          - {name: cherry tomatoes, category: produce}
+      - label: Cheese
+        options:
+          - {name: parmesan cheese, category: dairy, usual: true}
+          - {name: mozzarella cheese, category: dairy}
+          - {name: dairy-free cheese, category: dairy}
+  wrap:
+    names: [wraps, a wrap]
+    cuisine: american
+    steps:
+      - label: Wrap
+        options:
+          - {name: flour tortillas, category: bakery, usual: true}
+          - {name: whole wheat tortillas, category: bakery}
+          - {name: spinach tortillas, category: bakery}
+          - {name: corn tortillas, category: bakery}
+      - label: Protein
+        options:
+          - {name: chicken breast, category: meat, usual: true}
+          - {name: sliced turkey, category: meat}
+          - {name: black beans, category: legume}
+          - {name: falafel, category: legume}
+          - {name: tofu, category: legume}
+      - label: Vegetables
+        options:
+          - {name: lettuce, category: produce, usual: true}
+          - {name: tomatoes, category: produce, usual: true}
+          - {name: red onion, category: produce}
+          - {name: bell pepper, category: produce}
+          - {name: avocado, category: produce}
+      - label: Sauces and cheese
+        options:
+          - {name: ranch dressing, category: condiment}
+          - {name: hummus, category: legume}
+          - {name: salsa, category: condiment}
+          - {name: cheddar cheese, category: dairy, usual: true}
+          - {name: feta cheese, category: dairy}
+  bowl:
+    names: [grain bowl, rice bowl, a bowl, power bowl]
+    cuisine: american
+    steps:
+      - label: Base
+        options:
+          - {name: white rice, category: grain, usual: true}
+          - {name: brown rice, category: grain}
+          - {name: quinoa, category: grain}
+          - {name: mixed greens, category: produce}
+      - label: Protein
+        options:
+          - {name: chicken breast, category: meat, usual: true}
+          - {name: tofu, category: legume}
+          - {name: black beans, category: legume}
+          - {name: salmon, category: seafood}
+          - {name: eggs, category: egg}
+      - label: Vegetables
+        options:
+          - {name: broccoli, category: produce, usual: true}
+          - {name: carrots, category: produce}
+          - {name: edamame, category: legume}
+          - {name: cucumber, category: produce}
+          - {name: avocado, category: produce}
+          - {name: corn, category: produce}
+      - label: Sauce
+        options:
+          - {name: soy sauce, category: condiment, usual: true}
+          - {name: teriyaki sauce, category: condiment}
+          - {name: sriracha, category: condiment}
+          - {name: tahini, category: nut_seed}
+          - {name: salsa, category: condiment}

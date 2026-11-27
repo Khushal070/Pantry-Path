@@ -54,6 +54,11 @@ class SearchOutcome:
     # Which model worked out the ingredients: {"a2": name, "stronger": bool}; a2 is None
     # when the dish came from the catalog (no model involved)
     model_used: dict[str, Any] | None = None
+    # The saved list made from this search (lists.py); list_error when saving failed
+    list_id: str | None = None
+    list_error: bool = False
+    # The shopper's chosen product per item (choices.py views; memory only)
+    choices: dict[str, Any] | None = None
 
 
 class EngineError(Exception):
@@ -85,4 +90,28 @@ class Engine(Protocol):
         """stronger: work out an unseen dish's ingredients with the stronger model
         (stronger_model.py) instead of the champion; info()["stronger_model"] says whether
         this engine has one."""
+        ...
+
+    def plan(self, query: str, avoid: list[str], diet: str) -> Any:
+        """A guided build's dish plan (plans.DishPlan): template, catalog or model.
+        Raises EngineError (kind plan_failed) when no plan can be made."""
+        ...
+
+    def prefetch(self, zip_code: str, terms: list[str]) -> None:
+        """Start fetching stores (no terms) or products for these terms in the background,
+        so the final search finds them ready. Never raises; may do nothing."""
+        ...
+
+    def options(self, request: dict[str, Any], terms: list[str]) -> dict[str, Any]:
+        """Products for many items, judged by the diet rules, for a build's choices:
+        result.json's {stores, ingredients} (memory only, never saved). The live engine asks
+        Kroger only (Target costs a credit per call). Raises EngineError."""
+        ...
+
+    def search_ingredients(self, request: dict[str, Any], guided: dict[str, Any],
+                           extras: dict[str, Any], clarify: list[str],
+                           progress: Progress, *, answer: bool = True) -> SearchOutcome:
+        """Search the ingredients a guided build chose. guided: {dish, cuisine, source,
+        ingredients: [{name, role, category}]}. answer=False: no A3 (a saved list's
+        "Find products again" needs only the products)."""
         ...

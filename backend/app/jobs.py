@@ -46,7 +46,10 @@ class JobState:
                 "result": o.result if o else None, "answer": o.answer if o else None,
                 "answer_status": o.answer_status if o else None,
                 "warnings": o.warnings if o else [],
-                "model_used": o.model_used if o else None}
+                "model_used": o.model_used if o else None,
+                "list_id": o.list_id if o else None,
+                "list_error": o.list_error if o else False,
+                "choices": o.choices if o else None}
 
 
 def _result_expiry(outcome: SearchOutcome) -> datetime | None:

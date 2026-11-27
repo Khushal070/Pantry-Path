@@ -116,7 +116,7 @@ The result is written to `data-pipeline/results/result_<run id>.json`. It's temp
 docker compose exec airflow-scheduler bash -c "cd /opt/pantrypath/data-pipeline && /opt/pipeline-venv/bin/python -m pantrypath_pipeline.request 'quiche' --zip 45202 --avoid milk gluten --diet vegetarian"
 ```
 
-**From Python** (the backend): `pantrypath_pipeline.request.build_result(cfg, query, zip_code, avoid, diet)`. See [`docs/data-pipeline-handoff.md`](../docs/data-pipeline-handoff.md).
+**From Python** (the backend): `pantrypath_pipeline.request.build_result(cfg, query, zip_code, avoid, diet)`, which finds the dish's ingredients (catalog, else the LLM) and then searches them. When the ingredients are already known, for example the ones a shopper chose in the backend's guided builds, `result_for_ingredients(cfg, request, dish, ingredients, catalog_version=...)` runs only the search half: the same store search, Open Food Facts evidence and verdicts, and the same `result.json`. `build_result` is the dish lookup followed by `result_for_ingredients`, so it behaves exactly as before. See [`docs/data-pipeline-handoff.md`](../docs/data-pipeline-handoff.md).
 
 **Dishes not in the catalog** are built on the fly by the LLM. That needs `LLM_API_KEY`, and costs about $0.03 per new dish with Claude Opus 5.5.
 

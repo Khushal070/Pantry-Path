@@ -1,30 +1,44 @@
-"""Accounts and logins, kept as JSON files like everything else.
+"""Accounts, logins and food preferences, in Postgres (db.py).
 
-    data/users/<id>.json      username, password hash, name and food preferences
-    data/logins/<hash>.json   one logged-in browser: whose it is and when it expires
+    auth.accounts       username and password hash               (as pp_auth)
+    auth.logins         one logged-in browser: whose, and until   (as pp_auth)
+    profile.profiles    name and food preferences, encrypted      (as pp_profile, crypto.py)
 
 Passwords are hashed with scrypt (Python's hashlib, no extra package) with a random salt
 each, checked in constant time, and never logged or sent back. A login is a random token
 in an HttpOnly cookie: page scripts can't read it, and SameSite=Lax keeps other sites from
-sending it with their requests. The server keeps only the token's SHA-256, so the files in
-data/logins/ can't be used to log in. Five failed logins for one username within ten
-minutes block that username's logins until the window passes.
+sending it with their requests. The database keeps only the token's SHA-256, so its rows
+can't be used to log in. Five failed logins for one username within ten minutes block that
+username's logins until the window passes (counted in memory).
+
+The profile is one encrypted value, {"format": 1, "prefs": {...}}, so fields can be added
+to it (such as where a saved item came from) without changing the table.
 """
 
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import threading
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import sqlalchemy as sa
+from psycopg.errors import UniqueViolation
+from sqlalchemy.exc import IntegrityError
+
+from app.crypto import DecryptError, ProfileCipher
+from app.db import Database
 from app.schemas import Preferences, RegisterIn
-from app.store import JsonStore
+
+log = logging.getLogger(__name__)
 
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
 LOGIN_LIMIT, LOGIN_WINDOW_S = 5, 600
+PROFILE_FORMAT = 1
+MAX_FAVOURITES = 200   # schemas.Preferences.favourites allows no more
 
 
 class AuthError(Exception):
@@ -41,6 +55,10 @@ class ThrottledError(Exception):
 
 class UsernameTakenError(Exception):
     """HTTP 409."""
+
+
+class ProfileUnreadableError(Exception):
+    """A saved profile can't be decrypted (wrong or missing key): HTTP 500."""
 
 
 def _b64(raw: bytes) -> str:
@@ -73,7 +91,7 @@ _DUMMY_HASH = hash_password(secrets.token_hex(16))
 
 
 def token_key(token: str) -> str:
-    """The name a login is stored under: the token's SHA-256, never the token itself."""
+    """The key a login is stored under: the token's SHA-256, never the token itself."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
@@ -112,108 +130,231 @@ class Throttle:
             self._failures.pop(key, None)
 
 
+ACCOUNT_COLUMNS = "id, username, password_hash, created_at, updated_at"
+
+
 class Accounts:
-    def __init__(self, store: JsonStore, login_days: int = 30):
-        self.store = store
+    def __init__(self, db: Database, cipher: ProfileCipher, login_days: int = 30):
+        self.db, self.cipher = db, cipher
         self.login_ttl = timedelta(days=login_days)
         self.throttle = Throttle()
 
+    # ------------------------------------------------------------ reading
+
+    def _account(self, where: str, **params: Any) -> sa.Row | None:
+        with self.db.auth.connect() as conn:
+            return conn.execute(sa.text(f"SELECT {ACCOUNT_COLUMNS} FROM auth.accounts "
+                                        f"WHERE {where}"), params).first()
+
+    def _user(self, account: sa.Row) -> dict[str, Any]:
+        """The account and its decrypted preferences, as the rest of the app uses them."""
+        user_id = str(account.id)
+        with self.db.profile.connect() as conn:
+            profile = conn.execute(sa.text(
+                "SELECT prefs_encrypted, key_version, updated_at FROM profile.profiles "
+                "WHERE user_id = :id"), {"id": account.id}).first()
+        if profile is None:   # registering failed halfway: start from blank preferences
+            log.warning("Account %s has no profile; using blank preferences", user_id)
+            prefs, updated = Preferences(name=account.username).model_dump(mode="json"), None
+        else:
+            try:
+                saved = self.cipher.decrypt(user_id, profile.prefs_encrypted,
+                                            profile.key_version)
+            except DecryptError as exc:
+                log.error("The profile of account %s can't be decrypted: %s", user_id, exc)
+                raise ProfileUnreadableError("Your saved preferences can't be read.") from exc
+            prefs, updated = saved["prefs"], profile.updated_at
+        return {"id": user_id, "username": account.username,
+                "password_hash": account.password_hash, "created_at": account.created_at,
+                "updated_at": max(t for t in (account.updated_at, updated) if t), **prefs}
+
     def find(self, username: str) -> dict[str, Any] | None:
-        return next((u for u in self.store.all("users") if u["username"] == username), None)
+        account = self._account("username = :u", u=username)
+        return self._user(account) if account else None
+
+    def get(self, user_id: str) -> dict[str, Any] | None:
+        account = self._account("id = :id", id=user_id)
+        return self._user(account) if account else None
+
+    # ------------------------------------------------------------ writing
+
+    def _save_profile(self, user_id: str, prefs: Preferences) -> None:
+        blob, version = self.cipher.encrypt(
+            user_id, {"format": PROFILE_FORMAT, "prefs": prefs.model_dump(mode="json")})
+        with self.db.profile.begin() as conn:
+            conn.execute(sa.text(
+                "INSERT INTO profile.profiles (user_id, prefs_encrypted, key_version) "
+                "VALUES (:id, :blob, :version) "
+                "ON CONFLICT (user_id) DO UPDATE SET prefs_encrypted = excluded.prefs_encrypted,"
+                " key_version = excluded.key_version, updated_at = now()"),
+                {"id": user_id, "blob": blob, "version": version})
 
     def register(self, body: RegisterIn) -> dict[str, Any]:
-        password_hash = hash_password(body.password)   # slow on purpose: outside the lock
-        now = _now().isoformat()
-        with self.store.locked():
-            if self.find(body.username):
-                raise UsernameTakenError(f"The username {body.username} is taken.")
-            user = {"id": "u_" + secrets.token_hex(6), "username": body.username,
-                    "password_hash": password_hash, "created_at": now, "updated_at": now,
-                    **Preferences(name=body.name).model_dump(mode="json")}
-            self.store.put("users", user["id"], user)
-        return user
+        password_hash = hash_password(body.password)   # slow on purpose
+        try:
+            with self.db.auth.begin() as conn:
+                user_id = str(conn.execute(sa.text(
+                    "INSERT INTO auth.accounts (username, password_hash) VALUES (:u, :h) "
+                    "RETURNING id"), {"u": body.username, "h": password_hash}).scalar_one())
+        except IntegrityError as exc:
+            if isinstance(exc.orig, UniqueViolation):
+                raise UsernameTakenError(f"The username {body.username} is taken.") from exc
+            raise
+        try:
+            self._save_profile(user_id, Preferences(name=body.name))
+        except Exception:
+            # Two database users, two transactions: undo the account by hand
+            with self.db.auth.begin() as conn:
+                conn.execute(sa.text("DELETE FROM auth.accounts WHERE id = :id"),
+                             {"id": user_id})
+            raise
+        return self.get(user_id)
 
     def login(self, username: str, password: str) -> tuple[dict[str, Any], str]:
         if self.throttle.blocked(username):
             raise ThrottledError("Too many tries. Wait a few minutes, then try again.")
-        user = self.find(username)
-        matches = verify_password(password, user["password_hash"] if user else _DUMMY_HASH)
-        if user is None or not matches:
+        account = self._account("username = :u", u=username)
+        matches = verify_password(password,
+                                  account.password_hash if account else _DUMMY_HASH)
+        if account is None or not matches:
             self.throttle.fail(username)
             raise AuthError("Wrong username or password.")
         self.throttle.clear(username)
-        return user, self.start_login(user["id"])
+        return self._user(account), self.start_login(str(account.id))
 
     def start_login(self, user_id: str) -> str:
         token = secrets.token_urlsafe(32)
-        key, now = token_key(token), _now()
-        self.store.put("logins", key, {
-            "id": key, "user_id": user_id, "created_at": now.isoformat(),
-            "expires_at": (now + self.login_ttl).isoformat()})
+        with self.db.auth.begin() as conn:
+            conn.execute(sa.text(
+                "INSERT INTO auth.logins (token_hash, user_id, expires_at) "
+                "VALUES (:k, :u, :e)"),
+                {"k": token_key(token), "u": user_id, "e": _now() + self.login_ttl})
         return token
 
     def user_for(self, token: str | None) -> dict[str, Any] | None:
-        """The user a login token belongs to, or None (no such login, expired, user gone)."""
+        """The user a login token belongs to, or None (no such login, or expired)."""
         if not token:
             return None
         key = token_key(token)
-        login = self.store.get("logins", key)
-        if login is None:
+        with self.db.auth.connect() as conn:
+            row = conn.execute(sa.text(
+                "SELECT l.expires_at, a.id, a.username, a.password_hash, a.created_at, "
+                "a.updated_at FROM auth.logins l JOIN auth.accounts a ON a.id = l.user_id "
+                "WHERE l.token_hash = :k"), {"k": key}).first()
+        if row is None:
             return None
-        user = self.store.get("users", login["user_id"])
-        if user is None or datetime.fromisoformat(login["expires_at"]) <= _now():
-            self.store.delete("logins", key)
+        if row.expires_at <= _now():
+            self.logout(token)
             return None
-        return user
+        return self._user(row)
+
+    def user_id_for(self, token: str | None) -> str | None:
+        """Whose login this is (unexpired), without reading the profile: logout must work
+        even when a profile can't be decrypted."""
+        if not token:
+            return None
+        with self.db.auth.connect() as conn:
+            row = conn.execute(sa.text(
+                "SELECT user_id FROM auth.logins WHERE token_hash = :k AND expires_at > :now"),
+                {"k": token_key(token), "now": _now()}).first()
+        return str(row.user_id) if row else None
 
     def logout(self, token: str | None) -> None:
         if token:
-            self.store.delete("logins", token_key(token))
+            with self.db.auth.begin() as conn:
+                conn.execute(sa.text("DELETE FROM auth.logins WHERE token_hash = :k"),
+                             {"k": token_key(token)})
+
+    def _modify_profile(self, user_id: str, change: Any) -> dict[str, Any]:
+        """Read, change and write the profile in one transaction, with its row locked, so
+        two saves at once (preferences in one tab, favourites from a search) can't undo
+        each other. change(prefs dict) edits the preferences in place."""
+        account = self._account("id = :id", id=user_id)
+        if account is None:
+            raise AuthError("Please log in.")
+        with self.db.profile.begin() as conn:
+            row = conn.execute(sa.text(
+                "SELECT prefs_encrypted, key_version FROM profile.profiles "
+                "WHERE user_id = :id FOR UPDATE"), {"id": user_id}).first()
+            if row is None:
+                prefs = Preferences(name=account.username).model_dump(mode="json")
+            else:
+                try:
+                    prefs = self.cipher.decrypt(user_id, row.prefs_encrypted,
+                                                row.key_version)["prefs"]
+                except DecryptError as exc:
+                    raise ProfileUnreadableError("Your saved preferences can't be "
+                                                 "read.") from exc
+            change(prefs)
+            checked = Preferences(**prefs).model_dump(mode="json")
+            blob, version = self.cipher.encrypt(
+                user_id, {"format": PROFILE_FORMAT, "prefs": checked})
+            try:
+                conn.execute(sa.text(
+                    "INSERT INTO profile.profiles (user_id, prefs_encrypted, key_version) "
+                    "VALUES (:id, :blob, :version) ON CONFLICT (user_id) DO UPDATE SET "
+                    "prefs_encrypted = excluded.prefs_encrypted, "
+                    "key_version = excluded.key_version, updated_at = now()"),
+                    {"id": user_id, "blob": blob, "version": version})
+            except IntegrityError as exc:   # the account was deleted meanwhile
+                raise AuthError("Please log in.") from exc
+        user = self.get(user_id)
+        if user is None:
+            raise AuthError("Please log in.")
+        return user
 
     def update_preferences(self, user_id: str, prefs: Preferences) -> dict[str, Any]:
-        def change(user: dict[str, Any]) -> None:
-            user.update(prefs.model_dump(mode="json"), updated_at=_now().isoformat())
+        """The form's save. It doesn't send favourites, so a save without them keeps them."""
+        fields = prefs.model_dump(mode="json")
+        if "favourites" not in prefs.model_fields_set:
+            fields.pop("favourites")
+        return self._modify_profile(user_id, lambda current: current.update(fields))
 
-        user = self.store.update("users", user_id, change)
-        if user is None:
-            raise AuthError("Please log in.")
-        return user
+    def set_favourites(self, user_id: str, changes: dict[str, str | None]) -> dict[str, Any]:
+        """Set (brand) or remove (None) favourites by item; the rest of the profile stays.
+        Past MAX_FAVOURITES the oldest are dropped (a changed one counts as new)."""
+        def change(prefs: dict[str, Any]) -> None:
+            favourites = dict(prefs.get("favourites") or {})
+            for item, brand in changes.items():
+                item = item.strip().lower()
+                favourites.pop(item, None)
+                if brand:
+                    favourites[item] = brand.strip()
+            while len(favourites) > MAX_FAVOURITES:
+                favourites.pop(next(iter(favourites)))
+            prefs["favourites"] = favourites
 
-    def _check_password(self, user_id: str, password: str) -> dict[str, Any]:
-        user = self.store.get("users", user_id)
-        if user is None:
+        return self._modify_profile(user_id, change)
+
+    def _check_password(self, user_id: str, password: str) -> None:
+        account = self._account("id = :id", id=user_id)
+        if account is None:
             raise AuthError("Please log in.")
-        if not verify_password(password, user["password_hash"]):
+        if not verify_password(password, account.password_hash):
             raise WrongPasswordError("That password isn't right.")
-        return user
 
     def change_password(self, user_id: str, current: str, new: str,
                         keep_token: str | None = None) -> None:
         """New password; every other login of this user ends (this browser stays in)."""
         self._check_password(user_id, current)
         password_hash = hash_password(new)
-        self.store.update("users", user_id, lambda u: u.update(
-            password_hash=password_hash, updated_at=_now().isoformat()))
-        self._end_logins(user_id, keep=token_key(keep_token) if keep_token else None)
+        with self.db.auth.begin() as conn:
+            conn.execute(sa.text("UPDATE auth.accounts SET password_hash = :h, "
+                                 "updated_at = now() WHERE id = :id"),
+                         {"h": password_hash, "id": user_id})
+            conn.execute(sa.text("DELETE FROM auth.logins WHERE user_id = :id "
+                                 "AND token_hash IS DISTINCT FROM :keep"),
+                         {"id": user_id, "keep": token_key(keep_token) if keep_token else None})
 
     def delete(self, user_id: str, password: str) -> None:
-        """The account and every login of it. The caller deletes the user's chats."""
+        """The account; Postgres deletes its logins and profile with it (ON DELETE CASCADE).
+        The caller ends the user's chats."""
         self._check_password(user_id, password)
-        self.store.delete("users", user_id)
-        self._end_logins(user_id)
-
-    def _end_logins(self, user_id: str, keep: str | None = None) -> None:
-        with self.store.locked():
-            for login in self.store.all("logins"):
-                if login.get("user_id") == user_id and login.get("id") != keep:
-                    self.store.delete("logins", login["id"])
+        with self.db.auth.begin() as conn:
+            conn.execute(sa.text("DELETE FROM auth.accounts WHERE id = :id"), {"id": user_id})
 
     def purge_expired(self) -> int:
         """Delete logins that have expired; run at startup."""
-        now, removed = _now(), 0
-        with self.store.locked():
-            for login in self.store.all("logins"):
-                if "id" in login and datetime.fromisoformat(login["expires_at"]) <= now:
-                    self.store.delete("logins", login["id"])
-                    removed += 1
-        return removed
+        with self.db.auth.begin() as conn:
+            return conn.execute(sa.text("DELETE FROM auth.logins WHERE expires_at <= :now"),
+                                {"now": _now()}).rowcount

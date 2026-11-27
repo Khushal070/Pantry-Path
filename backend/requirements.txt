@@ -8,3 +8,8 @@ uvicorn==0.54.0
 pydantic==2.14.1
 python-dotenv==1.2.4
 pyyaml==6.0.3
+# Accounts and profiles in Postgres (app/db.py), migrations (migrations/), profile encryption
+sqlalchemy==2.1.8
+psycopg[binary]==3.3.9
+alembic==1.20.1
+cryptography==50.0.2

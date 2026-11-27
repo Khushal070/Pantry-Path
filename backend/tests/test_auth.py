@@ -1,13 +1,12 @@
 """Accounts: password hashing, logins and logouts, password changes, deleting an account,
 and that one user never reaches another's chats or results."""
 
-import json
+from datetime import timedelta
 
-from conftest import PASSWORD, login, make_client, signup, wait_for
+from conftest import PASSWORD, login, make_client, rows, signup, wait_for
 from fastapi.testclient import TestClient
 
-from app.auth import Accounts, hash_password, token_key, verify_password
-from app.store import JsonStore
+from app.auth import hash_password, token_key, verify_password
 
 COOKIE = "pantrypath_login"
 
@@ -22,7 +21,7 @@ def test_password_hashes():
     assert not verify_password("x", "md5$1$2$3$4$5")
 
 
-def test_register_logs_in_with_a_safe_cookie(client, tmp_path):
+def test_register_logs_in_with_a_safe_cookie(client):
     response = client.post("/api/auth/register",
                            json={"name": "Ana", "username": "  Ana.B ", "password": PASSWORD})
     assert response.status_code == 201
@@ -31,12 +30,12 @@ def test_register_logs_in_with_a_safe_cookie(client, tmp_path):
     user = response.json()
     assert user["username"] == "ana.b" and "password_hash" not in user
     assert client.get("/api/me").json()["id"] == user["id"]
-    saved = (tmp_path / "data" / "users" / f"{user['id']}.json").read_text()
-    assert PASSWORD not in saved and "scrypt$" in saved
+    [account] = rows("SELECT * FROM auth.accounts")
+    assert account.password_hash.startswith("scrypt$") and PASSWORD not in str(account)
     token = client.cookies.get(COOKIE)
-    logins = list((tmp_path / "data" / "logins").glob("*.json"))
-    assert [p.stem for p in logins] == [token_key(token)]
-    assert token not in logins[0].read_text()      # only the token's hash is kept
+    [saved_login] = rows("SELECT * FROM auth.logins")
+    assert saved_login.token_hash == token_key(token)
+    assert token not in str(saved_login)           # only the token's hash is kept
 
 
 def test_usernames_are_unique_and_checked(client):
@@ -75,13 +74,25 @@ def test_a_logged_out_token_stops_working(client):
 
 def test_switching_users_in_one_browser(client):
     signup(client, "ana")
-    chat = client.post("/api/sessions").json()["id"]
+    client.post("/api/sessions")
     client.post("/api/auth/logout")
     signup(client, "bob")
     assert client.get("/api/sessions").json() == []
     client.post("/api/auth/logout")
     login(client, "ana")
-    assert [s["id"] for s in client.get("/api/sessions").json()] == [chat]
+    assert client.get("/api/me").json()["username"] == "ana"
+
+
+def test_logging_out_ends_the_users_chats_everywhere(client):
+    signup(client, "ana")
+    chat = client.post("/api/sessions").json()["id"]
+    laptop = TestClient(client.app)                    # a second browser, still logged in
+    assert login(laptop, "ana").status_code == 200
+    assert [s["id"] for s in laptop.get("/api/sessions").json()] == [chat]
+    client.post("/api/auth/logout")
+    assert laptop.get("/api/me").status_code == 200    # its login stays
+    assert laptop.get("/api/sessions").json() == []    # the chats don't
+    assert client.app.state.chat.chats.get(chat) is None
 
 
 def test_everything_but_config_and_auth_needs_a_login(client):
@@ -106,25 +117,26 @@ def test_too_many_wrong_passwords_pause_logins(client):
     assert login(client, "bob", "anything").status_code == 401   # other names unaffected
 
 
-def test_expired_logins_end(tmp_path):
-    with make_client(tmp_path) as client:
+def test_expired_logins_end():
+    with make_client() as client:
         signup(client, "ana", prefs=None)
-        path = next((tmp_path / "data" / "logins").glob("*.json"))
-        record = json.loads(path.read_text()) | {"expires_at": "2020-01-01T00:00:00+00:00"}
-        path.write_text(json.dumps(record))
+        rows("UPDATE auth.logins SET expires_at = '2020-01-01T00:00:00Z' RETURNING 1")
         assert client.get("/api/me").status_code == 401
-        assert not path.exists()
+        assert rows("SELECT * FROM auth.logins") == []
 
 
-def test_expired_logins_are_purged(tmp_path):
-    accounts = Accounts(JsonStore(tmp_path), login_days=0)   # every login expires at once
-    accounts.start_login("u_1")
-    assert accounts.purge_expired() == 1
-    assert not list((tmp_path / "logins").glob("*.json"))
+def test_expired_logins_are_purged():
+    with make_client() as client:
+        signup(client, "ana", prefs=None)
+        accounts = client.app.state.accounts
+        accounts.login_ttl = timedelta(0)                  # a login that expires at once
+        accounts.start_login(accounts.find("ana")["id"])
+        assert accounts.purge_expired() == 1
+        assert client.get("/api/me").status_code == 200    # the 30-day one stays
 
 
-def test_changing_the_password_logs_out_other_browsers(tmp_path):
-    with make_client(tmp_path) as phone:
+def test_changing_the_password_logs_out_other_browsers():
+    with make_client() as phone:
         signup(phone, "ana")
         laptop = TestClient(phone.app)                 # a second browser, its own cookies
         assert login(laptop, "ana").status_code == 200
@@ -141,22 +153,21 @@ def test_changing_the_password_logs_out_other_browsers(tmp_path):
         assert login(phone, "ana", "a new password").status_code == 200
 
 
-def test_deleting_an_account_removes_its_data(tmp_path):
-    with make_client(tmp_path) as client:
-        user = signup(client, "ana")
+def test_deleting_an_account_removes_its_data():
+    with make_client() as client:
+        signup(client, "ana")
         chat = client.post("/api/sessions").json()["id"]
         assert client.post("/api/me/delete", json={"password": "wrong"}).status_code == 403
         assert client.post("/api/me/delete", json={"password": PASSWORD}).status_code == 204
         assert client.get("/api/me").status_code == 401
         assert login(client, "ana").status_code == 401
-    data = tmp_path / "data"
-    assert not (data / "users" / f"{user['id']}.json").exists()
-    assert not (data / "sessions" / f"{chat}.json").exists()
-    assert not list((data / "logins").glob("*.json"))
+        assert client.app.state.chat.chats.get(chat) is None
+    for table in ("auth.accounts", "auth.logins", "profile.profiles"):
+        assert rows(f"SELECT * FROM {table}") == [], table
 
 
-def test_users_never_reach_each_others_chats_or_results(tmp_path):
-    with make_client(tmp_path) as ana:
+def test_users_never_reach_each_others_chats_or_results():
+    with make_client() as ana:
         signup(ana, "ana")
         chat = ana.post("/api/sessions").json()["id"]
         card = ana.post(f"/api/sessions/{chat}/messages",

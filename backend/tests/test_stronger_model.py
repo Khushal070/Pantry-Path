@@ -7,13 +7,10 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-from conftest import PASSWORD, signup, wait_for
-from fastapi.testclient import TestClient
+from conftest import PASSWORD, make_client, signup, wait_for
 
 from app.engines.base import EngineError
 from app.engines.demo import DemoEngine
-from app.main import create_app
-from app.settings import Settings
 
 
 def new_chat(client):
@@ -58,10 +55,9 @@ class StrongerDemo(DemoEngine):
 
 
 @pytest.fixture
-def stronger(tmp_path):
+def stronger():
     engine = StrongerDemo()
-    config = Settings(data_dir=tmp_path / "data", demo_delay_s=0)
-    with TestClient(create_app(config, engine=engine)) as client:
+    with make_client(engine=engine) as client:
         signup(client)
         yield client, engine
 
@@ -153,10 +149,9 @@ def test_the_same_search_is_redone_once(stronger):
     assert engine.calls == [False, True]
 
 
-def test_a_catalog_dish_has_nothing_to_redo(tmp_path):
+def test_a_catalog_dish_has_nothing_to_redo():
     engine = StrongerDemo(generated=False)
-    config = Settings(data_dir=tmp_path / "data", demo_delay_s=0)
-    with TestClient(create_app(config, engine=engine)) as client:
+    with make_client(engine=engine) as client:
         signup(client)
         chat, message, job = searched(client)
         assert job["model_used"] == {"a2": None, "stronger": False}
@@ -164,10 +159,9 @@ def test_a_catalog_dish_has_nothing_to_redo(tmp_path):
         assert response.status_code == 409 and "catalog" in response.json()["detail"]
 
 
-def test_a_busy_stronger_model_fails_the_new_search_only(tmp_path):
+def test_a_busy_stronger_model_fails_the_new_search_only():
     engine = StrongerDemo(fail_kind="stronger_busy")
-    config = Settings(data_dir=tmp_path / "data", demo_delay_s=0)
-    with TestClient(create_app(config, engine=engine)) as client:
+    with make_client(engine=engine) as client:
         signup(client)
         chat, first, job = searched(client)
         redo_job = client.post(f"/api/sessions/{chat}/messages/{first['id']}/rerun-stronger"

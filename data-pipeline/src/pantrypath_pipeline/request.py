@@ -24,7 +24,7 @@ import string
 import sys
 import time
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -237,32 +237,51 @@ def build_result(
     prompts/refine_dish.txt."""
     request = RequestInfo(query=query, zip=zip_code, avoid=list(avoid), diet=diet)
     profile, source = resolve_dish(cfg, request.query, llm_client, llm_template)
+    return result_for_ingredients(
+        cfg, request, DishInfo(name=profile.name, cuisine=profile.cuisine, source=source),
+        profile.ingredients, providers=providers,
+        catalog_version=profile.catalog_version if source == "catalog" else "llm")
+
+
+def result_for_ingredients(
+    cfg: Config,
+    request: RequestInfo,
+    dish: DishInfo,
+    ingredients: Sequence[Any],
+    *,
+    providers: list[StoreProvider] | None = None,
+    catalog_version: str,
+) -> Result:
+    """The request flow after the dish is known: products for each ingredient (anything
+    with name, role and category, e.g. a CatalogIngredient) at the stores near the ZIP,
+    judged by the diet rules. build_result uses it for a dish's profile; the backend's
+    guided search uses it for the ingredients the shopper chose."""
     providers = providers if providers is not None else make_providers(cfg)
-    terms = [ingredient.name for ingredient in profile.ingredients]
+    terms = list(dict.fromkeys(ingredient.name for ingredient in ingredients))
     found, stores, used = gather_products(cfg, providers, terms, request.zip)
     off = off_evidence(cfg, (p.barcode for products in found.values() for p in products
                              if p.barcode))
-    ingredients = [
+    results = [
         IngredientResult(
             name=ingredient.name,
             role=ingredient.role,
             category=ingredient.category,
             products=[judge(p, off, request) for p in found[ingredient.name]],
         )
-        for ingredient in profile.ingredients
+        for ingredient in ingredients
     ]
     now = datetime.now(UTC)
     return Result(
         request=request,
-        dish=DishInfo(name=profile.name, cuisine=profile.cuisine, source=source),
+        dish=dish,
         stores=stores,
-        ingredients=ingredients,
-        summary=Summary.from_ingredients(ingredients),
+        ingredients=results,
+        summary=Summary.from_ingredients(results),
         meta=Meta(
             generated_at=now,
             expires_at=now + timedelta(hours=cfg["request"]["result_ttl_hours"]),
             providers_used=used,
-            catalog_version=profile.catalog_version if source == "catalog" else "llm",
+            catalog_version=catalog_version,
         ),
     )
 
