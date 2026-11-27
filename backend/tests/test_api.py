@@ -173,3 +173,11 @@ def test_bad_requests(user_client):
     assert user_client.delete(f"/api/sessions/{chat}").status_code == 204
     assert user_client.get(f"/api/sessions/{chat}").status_code == 404
 
+
+
+def test_a_kind_of_food_can_be_searched_without_guided_builds(user_client):
+    chat = new_chat(user_client)
+    card = say(user_client, chat, "a sandwich for 2")
+    assert card["kind"] == "confirm"
+    job = wait_for(user_client, confirm(user_client, chat, card).json()["job"]["id"])
+    assert job["status"] == "done" and job["result"]["ingredients"]

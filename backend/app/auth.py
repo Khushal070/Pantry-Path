@@ -38,6 +38,7 @@ log = logging.getLogger(__name__)
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
 LOGIN_LIMIT, LOGIN_WINDOW_S = 5, 600
 PROFILE_FORMAT = 1
+MAX_FAVOURITES = 200   # schemas.Preferences.favourites allows no more
 
 
 class AuthError(Exception):
@@ -247,21 +248,83 @@ class Accounts:
             return None
         return self._user(row)
 
+    def user_id_for(self, token: str | None) -> str | None:
+        """Whose login this is (unexpired), without reading the profile: logout must work
+        even when a profile can't be decrypted."""
+        if not token:
+            return None
+        with self.db.auth.connect() as conn:
+            row = conn.execute(sa.text(
+                "SELECT user_id FROM auth.logins WHERE token_hash = :k AND expires_at > :now"),
+                {"k": token_key(token), "now": _now()}).first()
+        return str(row.user_id) if row else None
+
     def logout(self, token: str | None) -> None:
         if token:
             with self.db.auth.begin() as conn:
                 conn.execute(sa.text("DELETE FROM auth.logins WHERE token_hash = :k"),
                              {"k": token_key(token)})
 
-    def update_preferences(self, user_id: str, prefs: Preferences) -> dict[str, Any]:
-        try:
-            self._save_profile(user_id, prefs)
-        except IntegrityError as exc:   # the account was deleted meanwhile
-            raise AuthError("Please log in.") from exc
+    def _modify_profile(self, user_id: str, change: Any) -> dict[str, Any]:
+        """Read, change and write the profile in one transaction, with its row locked, so
+        two saves at once (preferences in one tab, favourites from a search) can't undo
+        each other. change(prefs dict) edits the preferences in place."""
+        account = self._account("id = :id", id=user_id)
+        if account is None:
+            raise AuthError("Please log in.")
+        with self.db.profile.begin() as conn:
+            row = conn.execute(sa.text(
+                "SELECT prefs_encrypted, key_version FROM profile.profiles "
+                "WHERE user_id = :id FOR UPDATE"), {"id": user_id}).first()
+            if row is None:
+                prefs = Preferences(name=account.username).model_dump(mode="json")
+            else:
+                try:
+                    prefs = self.cipher.decrypt(user_id, row.prefs_encrypted,
+                                                row.key_version)["prefs"]
+                except DecryptError as exc:
+                    raise ProfileUnreadableError("Your saved preferences can't be "
+                                                 "read.") from exc
+            change(prefs)
+            checked = Preferences(**prefs).model_dump(mode="json")
+            blob, version = self.cipher.encrypt(
+                user_id, {"format": PROFILE_FORMAT, "prefs": checked})
+            try:
+                conn.execute(sa.text(
+                    "INSERT INTO profile.profiles (user_id, prefs_encrypted, key_version) "
+                    "VALUES (:id, :blob, :version) ON CONFLICT (user_id) DO UPDATE SET "
+                    "prefs_encrypted = excluded.prefs_encrypted, "
+                    "key_version = excluded.key_version, updated_at = now()"),
+                    {"id": user_id, "blob": blob, "version": version})
+            except IntegrityError as exc:   # the account was deleted meanwhile
+                raise AuthError("Please log in.") from exc
         user = self.get(user_id)
         if user is None:
             raise AuthError("Please log in.")
         return user
+
+    def update_preferences(self, user_id: str, prefs: Preferences) -> dict[str, Any]:
+        """The form's save. It doesn't send favourites, so a save without them keeps them."""
+        fields = prefs.model_dump(mode="json")
+        if "favourites" not in prefs.model_fields_set:
+            fields.pop("favourites")
+        return self._modify_profile(user_id, lambda current: current.update(fields))
+
+    def set_favourites(self, user_id: str, changes: dict[str, str | None]) -> dict[str, Any]:
+        """Set (brand) or remove (None) favourites by item; the rest of the profile stays.
+        Past MAX_FAVOURITES the oldest are dropped (a changed one counts as new)."""
+        def change(prefs: dict[str, Any]) -> None:
+            favourites = dict(prefs.get("favourites") or {})
+            for item, brand in changes.items():
+                item = item.strip().lower()
+                favourites.pop(item, None)
+                if brand:
+                    favourites[item] = brand.strip()
+            while len(favourites) > MAX_FAVOURITES:
+                favourites.pop(next(iter(favourites)))
+            prefs["favourites"] = favourites
+
+        return self._modify_profile(user_id, change)
 
     def _check_password(self, user_id: str, password: str) -> None:
         account = self._account("id = :id", id=user_id)

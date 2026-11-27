@@ -43,18 +43,24 @@ from app.crypto import ProfileCipher
 from app.db import Database
 from app.engines import Engine, make_engine
 from app.jobs import Jobs
+from app.lists import Lists, ListUnreadableError
 from app.schemas import (
+    BuildActionIn,
     ChatReply,
     DeleteAccountIn,
+    FavouriteIn,
     Job,
     LoginIn,
     MessageIn,
     PasswordChangeIn,
     Preferences,
     RegisterIn,
+    SavedList,
+    SavedListSummary,
     SearchIn,
     Session,
     SessionSummary,
+    TickIn,
     User,
 )
 from app.settings import Settings, load_settings
@@ -87,8 +93,11 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         db.check()                                       # and on a wrong URL or password
         jobs = Jobs(settings.search_workers, settings.result_ttl_minutes)
         app.state.accounts = Accounts(db, cipher, settings.login_days)
+        app.state.lists = Lists(db, cipher)
         app.state.chat = ChatService(ChatMemory(settings.chat_idle_minutes),
-                                     engine or make_engine(settings), jobs)
+                                     engine or make_engine(settings), jobs,
+                                     guided_builds=settings.guided_builds,
+                                     lists=app.state.lists)
         expired = app.state.accounts.purge_expired()
         log.info("Pantry Path API: %s mode, accounts in Postgres, profile key %s "
                  "(%d expired logins removed)", app.state.chat.engine.mode, cipher.current,
@@ -126,6 +135,10 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
                            (WrongPasswordError, 403), (ThrottledError, 429),
                            (UsernameTakenError, 409), (UnavailableError, 503)):
         app.add_exception_handler(exc_type, error(code))
+
+    @app.exception_handler(ListUnreadableError)
+    def _list_unreadable(_: Request, exc: ListUnreadableError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=500)
 
     @app.exception_handler(ProfileUnreadableError)
     def _profile_unreadable(_: Request, exc: ProfileUnreadableError) -> JSONResponse:
@@ -175,11 +188,11 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     def logout(request: Request, response: Response) -> None:
         """Ends the login and the user's open chats (chats are never saved)."""
         token = request.cookies.get(COOKIE)
-        user = accounts(request).user_for(token)
-        if user is not None:
-            chat(request).delete_all(user["id"])
+        user_id = accounts(request).user_id_for(token)   # no profile read: always works
         accounts(request).logout(token)
         clear_login(response)
+        if user_id is not None:
+            chat(request).delete_all(user_id)
 
     @app.get("/api/me", response_model=User)
     def me(user: Me) -> dict[str, Any]:
@@ -188,6 +201,11 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     @app.put("/api/me/preferences", response_model=User)
     def save_preferences(body: Preferences, user: Me, request: Request) -> dict[str, Any]:
         return public(accounts(request).update_preferences(user["id"], body))
+
+    @app.put("/api/me/favourites", response_model=User)
+    def set_favourite(body: FavouriteIn, user: Me, request: Request) -> dict[str, Any]:
+        """Set or remove one favourite brand ("Make X your usual Y?", Preferences)."""
+        return public(accounts(request).set_favourites(user["id"], {body.item: body.brand}))
 
     @app.post("/api/me/password", status_code=status.HTTP_204_NO_CONTENT)
     def change_password(body: PasswordChangeIn, user: Me, request: Request) -> None:
@@ -229,9 +247,41 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         (minutes on Cloud Run CPUs), so FastAPI runs this in its thread pool."""
         return {"session": chat(request).post_message(user, session_id, body.text)}
 
+    @app.post("/api/sessions/{session_id}/builds/{message_id}", response_model=ChatReply)
+    def build_action(session_id: str, message_id: str, body: BuildActionIn, user: Me,
+                     request: Request) -> dict[str, Any]:
+        """A move on the newest build card (guided.py). "usual" starts the search, so the
+        reply then has a job; "next" past the last step adds the summary card."""
+        session, job = chat(request).build_action(
+            user, session_id, message_id, body.action, picks=body.picks, text=body.text,
+            name=body.name, choice=body.choice, key=body.key)
+        if job is not None:
+            keep_new_favourites(request, user, session)
+        return {"session": session, "job": job.view() if job else None}
+
+    def keep_new_favourites(request: Request, user: dict[str, Any],
+                            session: dict[str, Any]) -> None:
+        """A guided search keeps the brands picked for items without a favourite yet;
+        a different brand for one that has a favourite is only asked about (summary)."""
+        data = session["messages"][-1].get("data") or {}
+        new = (data.get("guided") or {}).get("favourites_new") or {}
+        if new:
+            try:
+                accounts(request).set_favourites(user["id"], new)
+            except Exception:
+                log.exception("Saving favourite brands failed")
+
+    @app.post("/api/sessions/{session_id}/messages/{message_id}/add", response_model=ChatReply)
+    def add_more(session_id: str, message_id: str, body: MessageIn, user: Me,
+                 request: Request) -> dict[str, Any]:
+        """'Anything else to add?' on a build's summary: the build opens again with these
+        items; Review makes a new summary."""
+        return {"session": chat(request).add_more(user, session_id, message_id, body.text)}
+
     @app.post("/api/sessions/{session_id}/search", response_model=ChatReply)
     def search(session_id: str, body: SearchIn, user: Me, request: Request) -> dict[str, Any]:
         session, job = chat(request).start_search(user, session_id, body)
+        keep_new_favourites(request, user, session)
         return {"session": session, "job": job.view()}
 
     @app.post("/api/sessions/{session_id}/messages/{message_id}/rerun",
@@ -249,6 +299,45 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         model."""
         session, job = chat(request).ask_stronger(user, session_id, message_id)
         return {"session": session, "job": job.view()}
+
+    # ------------------------------------------------------------ saved lists
+
+    def lists(request: Request) -> Lists:
+        return request.app.state.lists
+
+    def saved_list(request: Request, user: dict[str, Any], list_id: str) -> dict[str, Any]:
+        saved = lists(request).get(user["id"], list_id)
+        if saved is None:
+            raise HTTPException(404, "No such list.")
+        return saved
+
+    @app.get("/api/lists", response_model=list[SavedListSummary])
+    def list_lists(user: Me, request: Request) -> list[dict[str, Any]]:
+        """Every saved list, newest first: one per finished search."""
+        return lists(request).summaries(user["id"])
+
+    @app.get("/api/lists/{list_id}", response_model=SavedList)
+    def get_list(list_id: str, user: Me, request: Request) -> dict[str, Any]:
+        return saved_list(request, user, list_id)
+
+    @app.put("/api/lists/{list_id}/items/{item_id}", response_model=SavedList)
+    def tick_item(list_id: str, item_id: str, body: TickIn, user: Me,
+                  request: Request) -> dict[str, Any]:
+        saved = lists(request).tick(user["id"], list_id, item_id, body.ticked)
+        if saved is None:
+            raise HTTPException(404, "No such list or item.")
+        return saved
+
+    @app.delete("/api/lists/{list_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_list(list_id: str, user: Me, request: Request) -> None:
+        if not lists(request).delete(user["id"], list_id):
+            raise HTTPException(404, "No such list.")
+
+    @app.post("/api/lists/{list_id}/products", response_model=Job)
+    def find_products(list_id: str, user: Me, request: Request) -> dict[str, Any]:
+        """Fresh products for a saved list's items (in memory only, never saved); read the
+        job with GET /api/jobs/{id}."""
+        return chat(request).find_products(user, saved_list(request, user, list_id)).view()
 
     @app.get("/api/jobs/{job_id}", response_model=Job)
     def get_job(job_id: str, user: Me, request: Request) -> dict[str, Any]:

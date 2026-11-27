@@ -60,10 +60,10 @@ def test_upgrade_creates_the_tables_in_their_schemas(db):
     upgrade(db)
     inspector = sa.inspect(db.engine())
     assert sorted(inspector.get_table_names(schema="auth")) == ["accounts", "logins"]
-    assert inspector.get_table_names(schema="profile") == ["profiles"]
+    assert sorted(inspector.get_table_names(schema="profile")) == ["lists", "profiles"]
     with db.engine().connect() as conn:
         assert conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar() \
-            == "0001"
+            == "0002"
 
 
 def test_each_user_works_in_its_own_schema(db):
@@ -79,6 +79,7 @@ def test_each_user_works_in_its_own_schema(db):
 
 
 @pytest.mark.parametrize(("role", "table"), [("auth", "profile.profiles"),
+                                             ("auth", "profile.lists"),
                                              ("profile", "auth.accounts"),
                                              ("profile", "auth.logins")])
 def test_neither_user_can_read_the_other_schema(db, role, table):
@@ -107,6 +108,19 @@ def test_deleting_an_account_deletes_its_logins_and_profile(db):
         assert _count(conn, "auth.logins") == 0
     with db.engine("profile").connect() as conn:
         assert _count(conn, "profile.profiles") == 0
+
+
+def test_deleting_an_account_deletes_its_lists(db):
+    upgrade(db)
+    with db.engine("auth").begin() as conn:
+        user_id = _add_account(conn)
+    with db.engine("profile").begin() as conn:
+        conn.execute(sa.text("INSERT INTO profile.lists (user_id, list_encrypted, key_version) "
+                             "VALUES (:u, :b, 'v1')"), {"u": user_id, "b": b"\x00x"})
+    with db.engine("auth").begin() as conn:
+        conn.execute(sa.text("DELETE FROM auth.accounts WHERE id = :u"), {"u": user_id})
+    with db.engine("profile").connect() as conn:
+        assert _count(conn, "profile.lists") == 0
 
 
 def test_a_profile_needs_an_account(db):

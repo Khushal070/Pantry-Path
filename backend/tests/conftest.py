@@ -47,11 +47,14 @@ def rows(query: str) -> list[sa.Row]:
 
 def saved_text() -> str:
     """Everything the database holds, as text: to check what is never saved."""
-    return "\n".join(str(r) for table in ("auth.accounts", "auth.logins", "profile.profiles")
+    return "\n".join(str(r) for table in ("auth.accounts", "auth.logins", "profile.profiles",
+                                          "profile.lists")
                      for r in rows(f"SELECT * FROM {table}"))
 
 
 def settings_for(db: ScratchDatabase, **settings: Any) -> Settings:
+    # The confirm-card flow unless a test asks for guided builds (test_guided_api.py)
+    settings.setdefault("guided_builds", False)
     return Settings(db_auth_url=db.url("auth"), db_profile_url=db.url("profile"),
                     profile_keys=settings.pop("profile_keys", PROFILE_KEYS), demo_delay_s=0,
                     **settings)

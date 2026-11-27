@@ -52,14 +52,18 @@ class ChatMemory:
 
     def update(self, chat_id: str, change: Callable[[Chat], None],
                touch: bool = True) -> Chat | None:
-        """Change a chat in place under the lock; None if it has ended. touch=False for
-        changes nobody typed (a search finishing), so they don't keep a chat alive."""
+        """Change a chat under the lock; None if it has ended. The change runs on a copy
+        that replaces the chat only if it succeeds, so a change that fails halfway leaves
+        the chat as it was. touch=False for changes nobody typed (a search finishing), so
+        they don't keep a chat alive."""
         with self._lock:
             self._forget_idle()
-            chat = self._chats.get(chat_id)
-            if chat is None:
+            current = self._chats.get(chat_id)
+            if current is None:
                 return None
+            chat = copy.deepcopy(current)
             change(chat)
+            self._chats[chat_id] = chat
             if touch:
                 self._last_used[chat_id] = self._clock()
             return copy.deepcopy(chat)

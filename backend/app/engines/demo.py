@@ -160,6 +160,32 @@ def _list_terms(text: str, pos: int) -> list[re.Match[str]]:
     return found
 
 
+def _template_dish(text: str) -> dict[str, Any] | None:
+    """A kind of food with a build-your-own template ("sandwich", "a salad"): a dish for
+    the demo's reader too, so guided builds work in demo mode (plans.py)."""
+    from app.plans import templates  # plans -> screen -> this module
+
+    for name, template in templates().items():
+        for word in [name, *(template.get("names") or [])]:
+            if re.search(rf"\b{re.escape(word)}s?\b", text):
+                return {"name": name}
+    return None
+
+
+def _template_as_dish(query: str) -> dict[str, Any] | None:
+    """A kind of food searched without a guided build: its template's usual options."""
+    from app.plans import find_template
+
+    found = find_template(query)
+    if found is None:
+        return None
+    name, template = found
+    return {"name": name, "cuisine": template.get("cuisine") or "american",
+            "ingredients": [{"name": o["name"], "role": "core", "category": o["category"]}
+                            for step in template["steps"] for o in step["options"]
+                            if o.get("usual")]}
+
+
 def read_chat(messages: list[dict[str, str]], catalog: DemoCatalog) -> ParseOutcome:
     """The demo's stand-in for A1: the shopper's messages in order, later ones win."""
     avoid: set[str] = set()
@@ -175,7 +201,7 @@ def read_chat(messages: list[dict[str, str]], catalog: DemoCatalog) -> ParseOutc
             diet = "vegan"
         elif re.search(r"\b(?:vegetarian|veggie)\b", text) and DIET_RANK[diet] < 1:
             diet = "vegetarian"
-        found = catalog.match(text)
+        found = catalog.match(text) or _template_dish(text)
         if found:
             dish = found
             # a dish's own words ("peanut butter cookies") are not allergens to avoid
@@ -220,7 +246,7 @@ def read_chat(messages: list[dict[str, str]], catalog: DemoCatalog) -> ParseOutc
         avoid=ordered_allergens({*avoid, *ask}), diet=diet,
         extras={"servings": servings, "tweaks": [], "unsupported": sorted(unsupported)},
         issues=issues, mentioned=ordered_allergens(mentioned), chat_avoid=chat_avoid,
-        clarify=ask, in_catalog=True if dish else None,
+        clarify=ask, in_catalog=(dish["name"] in catalog.by_name) if dish else None,
     )
 
 
@@ -310,7 +336,7 @@ def _conflicts(evidence: ProductEvidence, avoid: list[str], diet: str) -> list[s
 
 
 def synthetic_result(dish: dict[str, Any], request: dict[str, Any]) -> Result:
-    """Stores and products for one request, the same every time for the same request."""
+    """Stores and products for one request: the same every time for the same items and ZIP."""
     seed = zlib.crc32(json.dumps([dish["name"], request], sort_keys=True).encode())
     rng = random.Random(seed)
     avoid, diet = request["avoid"], request["diet"]
@@ -331,6 +357,9 @@ def synthetic_result(dish: dict[str, Any], request: dict[str, Any]) -> Result:
     ingredients = []
     for ing in dish["ingredients"]:
         name, category = ing["name"], ing["category"]
+        # the same item near the same ZIP gets the same products, whatever the dish (as a
+        # real store would): a build's picks are then found again by the final search
+        rng.seed(zlib.crc32(json.dumps([name, request["zip"]]).encode()))
         products: list[Product] = []
         regular = None
         for store in stores:
@@ -499,6 +528,7 @@ class DemoEngine:
         self.catalog = DemoCatalog()
         self.table = SubstituteTable()
         self.delay_s = delay_s
+        self._screen: Any = None
 
     def info(self) -> dict[str, Any]:
         return {"mode": self.mode, "dishes": len(self.catalog.dishes),
@@ -516,7 +546,8 @@ class DemoEngine:
                progress: Progress, *, stronger: bool = False) -> SearchOutcome:
         if stronger:
             raise EngineError("The demo has no stronger model.", kind="stronger_unavailable")
-        dish = self.catalog.by_name.get(request["query"]) or self.catalog.match(request["query"])
+        dish = (self.catalog.by_name.get(request["query"]) or self.catalog.match(request["query"])
+                or _template_as_dish(request["query"]))
         if dish is None:
             raise EngineError(
                 f"The demo doesn't know a dish called \"{request['query']}\". It knows "
@@ -525,6 +556,66 @@ class DemoEngine:
         progress("searching")
         time.sleep(self.delay_s)
         result = synthetic_result(dish, request).model_dump(mode="json")
+        return self._answer(result, extras, clarify, progress)
+
+    # ------------------------------------------------------------ guided builds
+
+    def plan(self, query: str, avoid: list[str], diet: str) -> Any:
+        """A template, else one of the demo's dishes; the demo has no model for others."""
+        from app.plans import PlanError, build_plan  # plans -> screen -> this module
+
+        def catalog(text: str) -> tuple[str, str, list[dict[str, Any]]] | None:
+            dish = self.catalog.by_name.get(text) or self.catalog.match(text)
+            return (dish["name"], dish["cuisine"], dish["ingredients"]) if dish else None
+
+        try:
+            return build_plan(query, avoid, diet, self.screen, catalog=catalog)
+        except PlanError as exc:
+            raise EngineError(
+                f"The demo doesn't know \"{query}\". Try a kind of food (sandwich, salad, "
+                "pasta, wrap, bowl) or one of its dishes, for example quiche lorraine.",
+                kind="not_found") from exc
+
+    @property
+    def screen(self) -> Any:
+        if self._screen is None:
+            from app.screen import Screen
+            self._screen = Screen(self.table)
+        return self._screen
+
+    def prefetch(self, zip_code: str, terms: list[str]) -> None:
+        """Synthetic stores need no fetching."""
+
+    def options(self, request: dict[str, Any], terms: list[str]) -> dict[str, Any]:
+        dish = {"name": request["query"], "cuisine": "american",
+                "ingredients": [{"name": t, "role": "core", "category": "other"}
+                                for t in dict.fromkeys(terms)]}
+        return synthetic_result(dish, request).model_dump(mode="json")
+
+    def search_ingredients(self, request: dict[str, Any], guided: dict[str, Any],
+                           extras: dict[str, Any], clarify: list[str],
+                           progress: Progress, *, answer: bool = True) -> SearchOutcome:
+        progress("searching")
+        time.sleep(self.delay_s)
+        dish = {"name": guided["dish"], "cuisine": guided.get("cuisine") or "american",
+                "ingredients": [{**i, "name": i.get("term") or i["name"]}
+                                for i in guided["ingredients"]]}
+        result = synthetic_result(dish, request).model_dump(mode="json")
+        for found, item in zip(result["ingredients"], guided["ingredients"], strict=True):
+            found["name"] = item["name"]   # searched by term, reported by item name
+        if not answer:
+            return SearchOutcome(result=result, answer_status="skipped",
+                                 warnings=[DEMO_WARNING])
+        chosen = guided.get("choices") or {}
+        if not chosen:
+            return self._answer(result, extras, clarify, progress)
+        from app.choices import narrow
+        outcome = self._answer(narrow(result, chosen), extras, clarify, progress)
+        outcome.result, outcome.choices = result, chosen   # every product, and the picks
+        return outcome
+
+    def _answer(self, result: dict[str, Any], extras: dict[str, Any], clarify: list[str],
+                progress: Progress) -> SearchOutcome:
         progress("answering")
         time.sleep(self.delay_s * 0.6)
         items = decide(result, self.table)

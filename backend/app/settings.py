@@ -5,6 +5,8 @@ PANTRYPATH_DB_AUTH_URL     Postgres as pp_auth: accounts and logins (required)
 PANTRYPATH_DB_PROFILE_URL  Postgres as pp_profile: food preferences (required)
 PANTRYPATH_PROFILE_KEYS    the keys that encrypt preferences, newest first (required;
                            app/crypto.py)
+PANTRYPATH_GUIDED          true (default): a dish is built step by step (guided.py) before
+                           searching; false: straight to the confirm card, as before
 PANTRYPATH_CHAT_IDLE_MIN   minutes a chat stays in memory after its last message
                            (default 20); chats are never saved
 PANTRYPATH_RESULT_TTL_MIN  how long search results stay in memory (default 60)
@@ -35,6 +37,7 @@ class Settings:
     db_profile_url: str | None = None
     profile_keys: str | None = None
     chat_idle_minutes: int = 20
+    guided_builds: bool = True
     result_ttl_minutes: int = 60
     search_workers: int = 2
     demo_delay_s: float = 1.2
@@ -60,6 +63,8 @@ def load_settings() -> Settings:
         db_profile_url=os.environ.get("PANTRYPATH_DB_PROFILE_URL") or None,
         profile_keys=os.environ.get("PANTRYPATH_PROFILE_KEYS") or None,
         chat_idle_minutes=int(os.environ.get("PANTRYPATH_CHAT_IDLE_MIN") or 20),
+        guided_builds=(os.environ.get("PANTRYPATH_GUIDED") or "true").strip().lower()
+        not in ("0", "false", "no", "off"),
         result_ttl_minutes=int(os.environ.get("PANTRYPATH_RESULT_TTL_MIN") or 60),
         search_workers=int(os.environ.get("PANTRYPATH_SEARCH_WORKERS") or 2),
         demo_delay_s=float(os.environ.get("PANTRYPATH_DEMO_DELAY_S") or 1.2),

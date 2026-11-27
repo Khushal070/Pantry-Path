@@ -106,3 +106,15 @@ def test_the_backend_wont_start_with_a_wrong_database_password():
     with pytest.raises(Exception, match="password authentication failed"):
         with TestClient(create_app(Settings(**settings), engine=DemoEngine(delay_s=0))):
             pass
+
+
+def test_logging_out_works_even_when_the_profile_cant_be_read():
+    with make_client() as before:
+        signup(before)
+        token = before.cookies.get(COOKIE)
+    with make_client(keep_data=True, profile_keys=f"v1:{new_key()}") as after:
+        after.cookies.set(COOKIE, token)
+        assert after.get("/api/me").status_code == 500
+        assert after.post("/api/auth/logout").status_code == 204
+        after.cookies.set(COOKIE, token)
+        assert after.get("/api/me").status_code == 401          # the login really ended

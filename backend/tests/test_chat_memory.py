@@ -51,3 +51,18 @@ def test_delete_and_update_after_the_end():
     chats.put("s_1", {"id": "s_1"})
     assert chats.delete("s_1") is True and chats.delete("s_1") is False
     assert chats.update("s_1", lambda c: None) is None
+
+
+def test_a_change_that_fails_leaves_the_chat_as_it_was():
+    chats, _ = memory()
+    chats.put("s_1", {"id": "s_1", "messages": ["a", "b"]})
+
+    def half_done(chat):
+        chat["messages"].remove("b")
+        raise ValueError("boom")
+
+    try:
+        chats.update("s_1", half_done)
+    except ValueError:
+        pass
+    assert chats.get("s_1")["messages"] == ["a", "b"]
