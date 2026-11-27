@@ -1,3 +1,4 @@
+import { api } from "../api";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AppConfig, Diet, Preferences, User } from "../types";
 import { ChipGroup, Segmented, toggle } from "./controls";
@@ -148,6 +149,8 @@ export function PreferencesDialog({
             />
           </div>
 
+          {!onboarding && <Favourites initial={user.favourites ?? {}} />}
+
           {error && (
             <p className="form-error" role="alert">
               {error}
@@ -291,5 +294,46 @@ function Account({
         </p>
       )}
     </section>
+  );
+}
+
+/** The brands remembered from the shopper's picks; any can be removed (it's asked again
+ * next time). Saved at once, apart from the form's Save. */
+function Favourites({ initial }: { initial: Record<string, string> }) {
+  const [favourites, setFavourites] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+  const entries = Object.entries(favourites).sort(([a], [b]) => a.localeCompare(b));
+  async function remove(item: string) {
+    setError(null);
+    try {
+      const user = await api.setFavourite(item, null);
+      setFavourites(user.favourites ?? {});
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  return (
+    <div className="field">
+      <span>
+        Your favourite brands <em className="muted">(remembered from what you pick; filled in next time)</em>
+      </span>
+      {entries.length === 0 ? (
+        <p className="muted small">None yet: the products you pick in a build are remembered here.</p>
+      ) : (
+        <ul className="favourites">
+          {entries.map(([item, brand]) => (
+            <li key={item}>
+              <span>
+                <strong>{brand}</strong> <span className="muted">for {item}</span>
+              </span>
+              <button type="button" className="link small" onClick={() => remove(item)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="form-error">{error}</p>}
+    </div>
   );
 }

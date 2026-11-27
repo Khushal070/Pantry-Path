@@ -1,5 +1,5 @@
-import type { AppConfig, Preferences, SessionSummary, User } from "../types";
-import { joinWords, labelOf, relativeTime } from "../format";
+import type { AppConfig, Preferences, SavedListSummary, SessionSummary, User } from "../types";
+import { cap, joinWords, labelOf, relativeTime } from "../format";
 import { LeafIcon, LogOutIcon, PlusIcon, SlidersIcon, TrashIcon, XIcon } from "../icons";
 
 export function preferencesLine(config: AppConfig | null, prefs: Preferences): string {
@@ -21,6 +21,9 @@ export function Sidebar({
   onNewChat,
   onOpenSession,
   onDeleteSession,
+  lists,
+  activeListId,
+  onOpenList,
   onClose,
 }: {
   config: AppConfig;
@@ -32,6 +35,9 @@ export function Sidebar({
   onNewChat: () => void;
   onOpenSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  lists: SavedListSummary[];
+  activeListId: string | null;
+  onOpenList: (id: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -86,6 +92,21 @@ export function Sidebar({
               title="Delete chat"
             >
               <TrashIcon size={14} />
+            </button>
+          </div>
+        ))}
+      </nav>
+
+      <nav className="chat-list saved-lists" aria-label="My lists">
+        <h2 className="side-heading">My lists</h2>
+        {lists.length === 0 && <p className="muted small pad">Every search you finish is saved here as a checklist.</p>}
+        {lists.map((l) => (
+          <div key={l.id} className={`chat-item${l.id === activeListId ? " active" : ""}`}>
+            <button className="chat-open" onClick={() => onOpenList(l.id)}>
+              <span className="chat-title">{cap(l.dish)}</span>
+              <span className="chat-meta">
+                {l.ticked}/{l.items} in the basket · {relativeTime(l.created_at)}
+              </span>
             </button>
           </div>
         ))}

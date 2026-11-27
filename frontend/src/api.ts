@@ -2,9 +2,12 @@
 // The login is an HttpOnly cookie the browser sends by itself; this code never sees it.
 import type {
   AppConfig,
+  BuildAction,
   ChatReply,
   Job,
   Preferences,
+  SavedList,
+  SavedListSummary,
   SearchRequest,
   Session,
   SessionSummary,
@@ -71,6 +74,8 @@ export const api = {
     call<User>("POST", "/auth/login", { username, password }, false),
   logout: () => call<void>("POST", "/auth/logout", undefined, false),
   savePreferences: (prefs: Preferences) => call<User>("PUT", "/me/preferences", prefs),
+  /** Set (brand) or remove (null) one favourite brand. */
+  setFavourite: (item: string, brand: string | null) => call<User>("PUT", "/me/favourites", { item, brand }),
   changePassword: (currentPassword: string, newPassword: string) =>
     call<void>("POST", "/me/password", { current_password: currentPassword, new_password: newPassword }),
   deleteAccount: (password: string) => call<void>("POST", "/me/delete", { password }),
@@ -88,10 +93,25 @@ export const api = {
       ...request,
       servings,
     }),
+  /** "Anything else to add?" on a build's summary: the build opens again with the items. */
+  addMore: (sessionId: string, messageId: string, text: string) =>
+    call<ChatReply>("POST", `/sessions/${sessionId}/messages/${messageId}/add`, { text }),
+  /** A move on a guided build card: next, back, finish, usual (starts the search), add, resolve, cancel. */
+  build: (sessionId: string, messageId: string, body: BuildAction) =>
+    call<ChatReply>("POST", `/sessions/${sessionId}/builds/${messageId}`, body),
   rerun: (sessionId: string, messageId: string) =>
     call<ChatReply>("POST", `/sessions/${sessionId}/messages/${messageId}/rerun`),
   /** Search again with the stronger model working out the ingredients: a new search message. */
   rerunStronger: (sessionId: string, messageId: string) =>
     call<ChatReply>("POST", `/sessions/${sessionId}/messages/${messageId}/rerun-stronger`),
   job: (id: string) => call<Job>("GET", `/jobs/${id}`),
+
+  // saved lists (one per finished search); offline.ts keeps a copy on the device
+  lists: () => call<SavedListSummary[]>("GET", "/lists"),
+  list: (id: string) => call<SavedList>("GET", `/lists/${id}`),
+  tick: (listId: string, itemId: string, ticked: boolean) =>
+    call<SavedList>("PUT", `/lists/${listId}/items/${itemId}`, { ticked }),
+  deleteList: (id: string) => call<void>("DELETE", `/lists/${id}`),
+  /** Fresh products for a saved list's items (never saved): poll the job. */
+  findProducts: (id: string) => call<Job>("POST", `/lists/${id}/products`),
 };

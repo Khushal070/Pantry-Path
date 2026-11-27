@@ -121,7 +121,7 @@ export function SearchCard({
         ? { label: stronger.label ?? "a stronger model", onAsk: onAskStronger }
         : null;
     return (
-      <ResultView job={job} mode={mode} listKey={`pantrypath.ticked.${message.id}`} stronger={offer} />
+      <ResultView job={job} mode={mode} stronger={offer} />
     );
   }
   return <Progress job={job} query={dish} mode={mode} offline={offline} />;
