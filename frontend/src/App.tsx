@@ -1,11 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, whenLoggedOut } from "./api";
-import type { AppConfig, Message, Preferences, SearchRequest, Session, SessionSummary, User } from "./types";
+import type {
+  AppConfig,
+  BuildAction,
+  BuildData,
+  Message,
+  Preferences,
+  SavedListSummary,
+  SearchRequest,
+  Session,
+  SessionSummary,
+  User,
+} from "./types";
 import { AuthScreen } from "./components/AuthScreen";
 import { ChatView } from "./components/ChatView";
 import { PreferencesDialog } from "./components/PreferencesDialog";
+import { SavedListPage } from "./components/SavedListPage";
 import { Sidebar } from "./components/Sidebar";
 import { XIcon } from "./icons";
+import {
+  LISTS_CHANGED,
+  clearBoot,
+  clearDevice,
+  flushQueue,
+  isOffline,
+  loadSummaries,
+  readBoot,
+  saveBoot,
+  setDeviceUser,
+} from "./offline";
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -21,12 +44,21 @@ export default function App() {
   const [dialog, setDialog] = useState<"preferences" | "onboarding" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lists, setLists] = useState<SavedListSummary[]>([]);
+  const [openList, setOpenList] = useState<string | null>(null); // a saved list instead of the chat
+  const [offline, setOffline] = useState(false);
 
   const showError = useCallback((e: unknown) => setToast(errorText(e)), []);
 
   // Back to the login screen, with nothing of the last user left on screen
   const signedOut = useCallback((notice: string | null) => {
-    setUser(null);
+    setUser((last) => {
+      if (last) clearDevice(last.id); // this device keeps nothing of a logged-out user
+      return null;
+    });
+    clearBoot();
+    setLists([]);
+    setOpenList(null);
     setSessions([]);
     setSession(null);
     setDialog(null);
@@ -45,14 +77,27 @@ export default function App() {
     setLoadError(null);
     setBooting(true);
     try {
-      setConfig(await api.config());
+      const nextConfig = await api.config();
+      setConfig(nextConfig);
+      setOffline(false);
       try {
-        setUser(await api.me());
+        const me = await api.me();
+        setUser(me);
+        saveBoot(nextConfig, me);
       } catch (e) {
         if (!(e instanceof ApiError && e.status === 401)) throw e;
         setUser(null); // not logged in: the login screen
+        clearBoot();
       }
     } catch (e) {
+      // No signal: open with this device's copy, so saved lists still work
+      const boot = readBoot<AppConfig, User>();
+      if (isOffline(e) && boot?.user) {
+        setConfig(boot.config);
+        setUser(boot.user);
+        setOffline(true);
+        return;
+      }
       setLoadError(errorText(e));
     } finally {
       setBooting(false);
@@ -71,13 +116,39 @@ export default function App() {
     }
   }, [showError]);
 
+  const refreshLists = useCallback(async () => {
+    if (!user) return;
+    try {
+      const r = await loadSummaries(user.id);
+      setLists(r.lists);
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) showError(e);
+    }
+  }, [user, showError]);
+
   // A new login (or a different user) starts on a blank chat with that user's chat list
   const userId = user?.id ?? null;
   useEffect(() => {
+    setDeviceUser(userId);
     setSession(null);
     setSessions([]);
-    if (userId) refreshSessions();
+    setOpenList(null);
+    if (userId && !offline) {
+      refreshSessions();
+      flushQueue(userId).catch(() => 0); // ticks made offline last time
+    }
   }, [userId, refreshSessions]);
+
+  useEffect(() => {
+    refreshLists();
+    const changed = () => refreshLists();
+    window.addEventListener(LISTS_CHANGED, changed);
+    window.addEventListener("online", changed);
+    return () => {
+      window.removeEventListener(LISTS_CHANGED, changed);
+      window.removeEventListener("online", changed);
+    };
+  }, [refreshLists]);
 
   useEffect(() => {
     if (!toast) return;
@@ -158,6 +229,43 @@ export default function App() {
     refreshSessions();
   }
 
+  async function build(message: Message, body: BuildAction) {
+    if (!session) return;
+    const reply = await api.build(session.id, message.id, body); // errors show on the card
+    setSession(reply.session);
+    refreshSessions();
+  }
+
+  // A build's products arrive in the background: refresh the chat until they have
+  const lastMessage = session?.messages[session.messages.length - 1];
+  const waitingForProducts =
+    lastMessage?.kind === "build" &&
+    (() => {
+      const b = lastMessage.data as unknown as BuildData;
+      if (b.state !== "choosing") return false;
+      if (b.products?.status === "loading") return true;
+      return b.additions.some((a) => a.status !== "clash" && !b.choices?.[a.name]);
+    })();
+  useEffect(() => {
+    if (!waitingForProducts || !session) return;
+    const id = session.id;
+    const timer = window.setTimeout(async () => {
+      try {
+        const fresh = await api.session(id);
+        setSession((now) => (now?.id === id ? fresh : now));
+      } catch {
+        // a missed refresh is fine: the next one comes
+      }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [waitingForProducts, session]);
+
+  async function addMore(message: Message, text: string) {
+    if (!session) return;
+    const reply = await api.addMore(session.id, message.id, text); // errors show on the card
+    setSession(reply.session);
+  }
+
   async function rerun(message: Message) {
     if (!session) return;
     const reply = await api.rerun(session.id, message.id);
@@ -205,15 +313,40 @@ export default function App() {
         onPreferences={() => setDialog("preferences")}
         onLogout={logout}
         onNewChat={() => {
+          setOpenList(null);
           setSession(null);
           setMenuOpen(false);
         }}
-        onOpenSession={openSession}
+        onOpenSession={(id) => {
+          setOpenList(null);
+          openSession(id);
+        }}
         onDeleteSession={deleteSession}
+        lists={lists}
+        activeListId={openList}
+        onOpenList={(id) => {
+          setOpenList(id);
+          setMenuOpen(false);
+        }}
         onClose={() => setMenuOpen(false)}
       />
       <div className="scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" />
       <main className="main">
+        {offline && (
+          <p className="callout warn small offline-banner">
+            You're offline: your saved lists work, and ticks are sent when the signal is back. Chat needs a
+            connection.
+          </p>
+        )}
+        {openList ? (
+          <SavedListPage
+            listId={openList}
+            mode={config.mode}
+            onBack={() => setOpenList(null)}
+            onDeleted={() => setOpenList(null)}
+            onOpenMenu={() => setMenuOpen(true)}
+          />
+        ) : (
         <ChatView
           config={config}
           user={user}
@@ -221,11 +354,14 @@ export default function App() {
           pendingText={pendingText}
           onSend={send}
           onConfirm={confirm}
+          onBuild={build}
+          onAddMore={addMore}
           onRerun={rerun}
           onAskStronger={askStronger}
           onEditPreferences={() => setDialog("preferences")}
           onOpenMenu={() => setMenuOpen(true)}
         />
+        )}
       </main>
       {dialog && (
         <PreferencesDialog

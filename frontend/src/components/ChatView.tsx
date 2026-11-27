@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { AppConfig, Message, SearchRequest, Session, User } from "../types";
+import type { AppConfig, BuildAction, BuildData, Message, SearchRequest, Session, User } from "../types";
 import { cap } from "../format";
 import { AlertIcon, LeafIcon, MenuIcon, SendIcon } from "../icons";
+import { BuildCard } from "./BuildCard";
 import { ConfirmCard } from "./ConfirmCard";
 import { SearchCard } from "./SearchCard";
 import { preferencesLine } from "./Sidebar";
@@ -20,6 +21,8 @@ export function ChatView({
   pendingText,
   onSend,
   onConfirm,
+  onBuild,
+  onAddMore,
   onRerun,
   onAskStronger,
   onEditPreferences,
@@ -31,6 +34,8 @@ export function ChatView({
   pendingText: string | null;
   onSend: (text: string) => Promise<boolean>;
   onConfirm: (message: Message, request: SearchRequest, servings: number | null) => Promise<void>;
+  onBuild: (message: Message, body: BuildAction) => Promise<void>;
+  onAddMore: (message: Message, text: string) => Promise<void>;
   onRerun: (message: Message) => Promise<void>;
   onAskStronger: (message: Message) => Promise<void>;
   onEditPreferences: () => void;
@@ -41,6 +46,10 @@ export function ChatView({
   const input = useRef<HTMLTextAreaElement>(null);
   const messages = session?.messages ?? [];
   const last = messages[messages.length - 1];
+  // While a build is open, typed text adds to it ("pineapple", "no onions", "start over")
+  const building = last?.kind === "build" && (last.data as unknown as BuildData).state === "choosing";
+  // At a build's summary, typed text adds to it too ("add ketchup")
+  const reviewing = last?.kind === "confirm" && !!last.data?.build_id && !last.data?.submitted;
 
   useEffect(() => {
     const box = scroller.current;
@@ -131,8 +140,14 @@ export function ChatView({
               key={m.id}
               message={m}
               config={config}
-              actionable={m === last && m.kind === "confirm" && !m.data?.submitted && pendingText === null}
+              actionable={
+                m === last &&
+                (m.kind === "build" || (m.kind === "confirm" && !m.data?.submitted)) &&
+                pendingText === null
+              }
               onConfirm={(request, servings) => onConfirm(m, request, servings)}
+              onBuild={(body) => onBuild(m, body)}
+              onAddMore={(text) => onAddMore(m, text)}
               onRerun={() => onRerun(m)}
               onAskStronger={() => onAskStronger(m)}
             />
@@ -151,7 +166,9 @@ export function ChatView({
                     <i />
                   </span>
                   <span className="muted small">
-                    Reading your message{config.mode === "live" ? " (the model can take a few seconds)" : ""}…
+                    {building || reviewing
+                      ? "Adding that to your dish…"
+                      : `Reading your message${config.mode === "live" ? " (a dish we don't know can take 20 seconds to plan)" : ""}…`}
                   </span>
                 </div>
               </div>
@@ -172,7 +189,13 @@ export function ChatView({
           value={text}
           rows={1}
           maxLength={2000}
-          placeholder="Tell me what you'd like to cook…"
+          placeholder={
+            building
+              ? "Add something (pineapple, no onions…) or say start over"
+              : reviewing
+                ? "Anything else to add? (ketchup, no mayo…)"
+                : "Tell me what you'd like to cook…"
+          }
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           aria-label="Message"
@@ -195,6 +218,8 @@ function MessageView({
   config,
   actionable,
   onConfirm,
+  onBuild,
+  onAddMore,
   onRerun,
   onAskStronger,
 }: {
@@ -202,6 +227,8 @@ function MessageView({
   config: AppConfig;
   actionable: boolean;
   onConfirm: (request: SearchRequest, servings: number | null) => Promise<void>;
+  onBuild: (body: BuildAction) => Promise<void>;
+  onAddMore: (text: string) => Promise<void>;
   onRerun: () => Promise<void>;
   onAskStronger: () => Promise<void>;
 }) {
@@ -213,8 +240,22 @@ function MessageView({
     );
   }
   let body;
-  if (message.kind === "confirm") {
-    body = <ConfirmCard message={message} config={config} actionable={actionable} onConfirm={onConfirm} />;
+  if (message.kind === "build") {
+    const build = message.data as unknown as BuildData;
+    const step = build.plan.steps[build.step];
+    // a new key whenever the server moves the build on, so the card's local picks start again
+    const key = `${message.id}:${build.step}:${build.state}:${(step ? (build.picks[step.id] ?? []) : []).join("|")}`;
+    body = <BuildCard key={key} message={message} actionable={actionable} onAction={onBuild} />;
+  } else if (message.kind === "confirm") {
+    body = (
+      <ConfirmCard
+        message={message}
+        config={config}
+        actionable={actionable}
+        onConfirm={onConfirm}
+        onAddMore={message.data?.build_id ? onAddMore : undefined}
+      />
+    );
   } else if (message.kind === "search") {
     body = (
       <SearchCard

@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { api } from "../api";
 import type { AppConfig, Diet, Draft, Message, SearchRequest } from "../types";
 import { ChipGroup, Segmented, toggle } from "./controls";
-import { joinWords, labelOf } from "../format";
+import { aisleText, joinWords, labelOf } from "../format";
 import { AlertIcon, CheckIcon, InfoIcon, SearchIcon } from "../icons";
 
 const DIET_ORDER: Diet[] = ["none", "vegetarian", "vegan"];
@@ -19,11 +20,13 @@ export function ConfirmCard({
   config,
   actionable,
   onConfirm,
+  onAddMore,
 }: {
   message: Message;
   config: AppConfig;
   actionable: boolean;
   onConfirm: (request: SearchRequest, servings: number | null) => Promise<void>;
+  onAddMore?: (text: string) => Promise<void>; // a build's summary: "Anything else to add?"
 }) {
   const draft = message.data as unknown as Draft;
   const [query, setQuery] = useState(draft.request.query);
@@ -90,7 +93,13 @@ export function ConfirmCard({
       <div className="field-row">
         <label className="field grow">
           <span>Dish</span>
-          <input value={query} maxLength={120} onChange={(e) => setQuery(e.target.value)} disabled={busy} />
+          <input
+            value={query}
+            maxLength={120}
+            onChange={(e) => setQuery(e.target.value)}
+            disabled={busy || !!draft.guided}
+            title={draft.guided ? "Chosen in your build: start over to change the dish" : undefined}
+          />
           {draft.in_catalog === false && (
             <small className="hint">Not in our dish catalog: I'll work out its ingredients first, which takes longer.</small>
           )}
@@ -103,7 +112,8 @@ export function ConfirmCard({
             maxLength={5}
             aria-invalid={!zipValid}
             onChange={(e) => setZip(e.target.value.replace(/\D/g, ""))}
-            disabled={busy}
+            disabled={busy || !!draft.guided}
+            title={draft.guided ? "Your products come from this ZIP's stores: start over to change it" : undefined}
           />
           {zip === draft.request.zip && sourceHint(draft.sources.zip) && (
             <small className="hint">{sourceHint(draft.sources.zip)}</small>
@@ -149,6 +159,55 @@ export function ConfirmCard({
         />
       </div>
 
+      {draft.guided && (
+        <small className="hint">
+          The dish and ZIP come from your build. Changing allergies or diet here searches your items afresh.
+        </small>
+      )}
+
+      {draft.guided && (
+        <div className="field">
+          <span>
+            Your products <em className="muted">({draft.guided.ingredients.length})</em>
+          </span>
+          <ul className="summary-products">
+            {draft.guided.ingredients.map((i) => {
+              const p = draft.guided?.choices?.[i.name];
+              return (
+                <li key={i.name} className={draft.guided?.added.includes(i.name) ? "added" : ""}>
+                  <span className="summary-item">{i.name}</span>
+                  {p ? (
+                    <span className="summary-product">
+                      <span className={`verdict ${p.verdict}`}>{p.verdict === "safe" ? "Safe" : "Read the label"}</span>{" "}
+                      {p.name}
+                      <span className="muted small">
+                        {" "}
+                        · {p.store}
+                        {p.aisle ? ` · ${aisleText(p.aisle)}` : ""}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="muted small">product found when you search</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {Object.keys(draft.guided.favourites_new ?? {}).length > 0 && (
+            <small className="hint">
+              New favourites, remembered when you search:{" "}
+              {Object.entries(draft.guided.favourites_new ?? {})
+                .map(([item, brand]) => `${brand} for ${item}`)
+                .join(", ")}
+              .
+            </small>
+          )}
+          <FavouriteQuestions asks={draft.guided.favourites_ask ?? []} />
+        </div>
+      )}
+
+      {draft.guided && onAddMore && <AddMore onAdd={onAddMore} disabled={busy} />}
+
       {(draft.notes.length > 0 || draft.needs.length > 0) && (
         <ul className="callout info">
           {draft.notes.map((note, i) => (
@@ -178,6 +237,90 @@ export function ConfirmCard({
           <SearchIcon size={16} /> {busy ? "Starting…" : "Search stores"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** "Make Nature's Own your usual sandwich bread instead of Dave's Killer Bread?" A favourite
+ * is never replaced without the shopper saying so. */
+function FavouriteQuestions({ asks }: { asks: { item: string; old: string; new: string }[] }) {
+  const [answered, setAnswered] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  if (!asks.length) return null;
+  async function answer(item: string, brand: string | null, label: string) {
+    setError(null);
+    try {
+      if (brand) await api.setFavourite(item, brand);
+      setAnswered((a) => ({ ...a, [item]: label }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+  return (
+    <ul className="favourite-asks">
+      {asks.map((a) => (
+        <li key={a.item}>
+          {answered[a.item] ? (
+            <span className="muted small">{answered[a.item]}</span>
+          ) : (
+            <>
+              <span className="small">
+                Make <strong>{a.new}</strong> your usual {a.item} instead of {a.old}?
+              </span>
+              <span className="row gap">
+                <button className="btn small primary" onClick={() => answer(a.item, a.new, `${a.new} is your usual ${a.item} now.`)}>
+                  Yes
+                </button>
+                <button className="btn small ghost" onClick={() => answer(a.item, null, `Kept ${a.old}.`)}>
+                  Keep {a.old}
+                </button>
+              </span>
+            </>
+          )}
+        </li>
+      ))}
+      {error && <li className="form-error">{error}</li>}
+    </ul>
+  );
+}
+
+/** At a build's summary: "Anything else to add?" Adding opens the build again with the
+ * items (searched and checked like any addition); Review makes a new summary. */
+function AddMore({ onAdd, disabled }: { onAdd: (text: string) => Promise<void>; disabled: boolean }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function add(event: React.FormEvent) {
+    event.preventDefault();
+    const value = text.trim();
+    if (!value) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onAdd(value);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="field add-more">
+      <span>Anything else to add?</span>
+      <form className="add-own" onSubmit={add}>
+        <input
+          value={text}
+          maxLength={300}
+          placeholder="ketchup, pickles, Dave's Killer Bread…"
+          onChange={(e) => setText(e.target.value)}
+          disabled={disabled || busy}
+          aria-label="Add more items"
+        />
+        <button type="submit" className="btn small ghost" disabled={disabled || busy || !text.trim()}>
+          {busy ? "Adding…" : "Add"}
+        </button>
+      </form>
+      <small className="hint">Or search now. Added items get products and an allergy check, then you review again.</small>
+      {error && <p className="form-error">{error}</p>}
     </div>
   );
 }

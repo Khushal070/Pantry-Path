@@ -73,3 +73,13 @@ export function routeLink(originZip: string, stores: Store[]): string | null {
 export function storeLink(store: Store): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${store.address}`)}`;
 }
+
+/** Kroger's aisle text often repeats itself ("Aisle 1, aisle 1"): show each part once. */
+export function aisleText(aisle: string | null | undefined): string {
+  if (!aisle) return "";
+  const parts: string[] = [];
+  for (const part of aisle.split(/\s*,\s*/)) {
+    if (part && !parts.some((p) => p.toLowerCase() === part.toLowerCase())) parts.push(part);
+  }
+  return parts.join(", ");
+}
