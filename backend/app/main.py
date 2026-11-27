@@ -3,8 +3,9 @@
     uvicorn app.main:app --reload            # http://localhost:8000, docs at /docs
 
 PANTRYPATH_MODE=demo (default) runs offline with synthetic stores; PANTRYPATH_MODE=live
-uses the champion models and live store data (backend/README.md). Keep one worker: the
-JSON files and the in-memory results belong to one process.
+uses the champion models and live store data (backend/README.md). Accounts and
+preferences are in Postgres (db.py); chats and search results live in memory, so keep one
+worker (and one Cloud Run instance).
 
 Everything under /api except config, health and the /api/auth routes needs a login: the
 pantrypath_login cookie that register and login set (auth.py).
@@ -15,6 +16,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
+import sqlalchemy.exc
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from app.auth import (
     Accounts,
     AuthError,
+    ProfileUnreadableError,
     ThrottledError,
     UsernameTakenError,
     WrongPasswordError,
@@ -35,6 +38,9 @@ from app.chat import (
     NotFoundError,
     UnavailableError,
 )
+from app.chat_memory import ChatMemory
+from app.crypto import ProfileCipher
+from app.db import Database
 from app.engines import Engine, make_engine
 from app.jobs import Jobs
 from app.schemas import (
@@ -52,7 +58,6 @@ from app.schemas import (
     User,
 )
 from app.settings import Settings, load_settings
-from app.store import JsonStore, StoreError
 from app.vocab import ALLERGEN_LABELS, ALLERGENS, DIET_LABELS, DIETS, NEED_LABELS, NEEDS
 
 log = logging.getLogger("pantrypath.api")
@@ -77,15 +82,20 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logging.basicConfig(level=logging.INFO,
                             format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-        store = JsonStore(settings.data_dir)
+        cipher = ProfileCipher.from_setting(settings.profile_keys)   # stops on a bad key
+        db = Database(settings.db_auth_url, settings.db_profile_url)
+        db.check()                                       # and on a wrong URL or password
         jobs = Jobs(settings.search_workers, settings.result_ttl_minutes)
-        app.state.accounts = Accounts(store, settings.login_days)
-        app.state.chat = ChatService(store, engine or make_engine(settings), jobs)
+        app.state.accounts = Accounts(db, cipher, settings.login_days)
+        app.state.chat = ChatService(ChatMemory(settings.chat_idle_minutes),
+                                     engine or make_engine(settings), jobs)
         expired = app.state.accounts.purge_expired()
-        log.info("Pantry Path API: %s mode, data in %s (%d expired logins removed)",
-                 app.state.chat.engine.mode, settings.data_dir, expired)
+        log.info("Pantry Path API: %s mode, accounts in Postgres, profile key %s "
+                 "(%d expired logins removed)", app.state.chat.engine.mode, cipher.current,
+                 expired)
         yield
         jobs.shutdown()
+        db.dispose()
 
     app = FastAPI(title="Pantry Path API", version="0.2.0", lifespan=lifespan)
     if settings.cors_origins:
@@ -117,10 +127,15 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
                            (UsernameTakenError, 409), (UnavailableError, 503)):
         app.add_exception_handler(exc_type, error(code))
 
-    @app.exception_handler(StoreError)
-    def _store_error(_: Request, exc: StoreError) -> JSONResponse:
-        log.error("%s", exc)
-        return JSONResponse({"detail": "A saved file can't be read."}, status_code=500)
+    @app.exception_handler(ProfileUnreadableError)
+    def _profile_unreadable(_: Request, exc: ProfileUnreadableError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=500)
+
+    @app.exception_handler(sqlalchemy.exc.OperationalError)
+    def _db_down(_: Request, exc: sqlalchemy.exc.OperationalError) -> JSONResponse:
+        log.error("The database can't be reached: %s", exc.orig)
+        return JSONResponse({"detail": "Accounts are unavailable right now. Please try "
+                                       "again in a minute."}, status_code=503)
 
     @app.get("/api/health")
     def health(request: Request) -> dict[str, Any]:
@@ -158,7 +173,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     @app.post("/api/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
     def logout(request: Request, response: Response) -> None:
-        accounts(request).logout(request.cookies.get(COOKIE))
+        """Ends the login and the user's open chats (chats are never saved)."""
+        token = request.cookies.get(COOKIE)
+        user = accounts(request).user_for(token)
+        if user is not None:
+            chat(request).delete_all(user["id"])
+        accounts(request).logout(token)
         clear_login(response)
 
     @app.get("/api/me", response_model=User)

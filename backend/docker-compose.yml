@@ -1,0 +1,31 @@
+# Local Postgres for the backend: the same major version as Cloud SQL's default (18).
+# For development and tests only; production uses Cloud SQL. From backend/:
+#
+#   docker compose up -d        # start (data survives restarts in the pgdata volume)
+#   docker compose down         # stop
+#   docker compose down -v      # stop and delete the data
+#
+# Port 5433 on this machine, so it can run next to another Postgres on 5432.
+# Only reachable from this machine (127.0.0.1). The password is for local use only.
+name: pantrypath-backend
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: pantrypath
+      POSTGRES_USER: pantrypath_owner
+      POSTGRES_PASSWORD: ${PANTRYPATH_DB_OWNER_PASSWORD:-local-only-owner}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # Postgres 18 images keep their data under /var/lib/postgresql (not .../data)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pantrypath_owner -d pantrypath"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

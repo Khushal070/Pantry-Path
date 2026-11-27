@@ -1,6 +1,6 @@
 # Pantry Path backend
 
-The chat API the React app (`frontend/`) talks to. FastAPI, with accounts, preferences and chats saved as plain JSON files (no database), and store results held in memory only.
+The chat API the React app (`frontend/`) talks to. FastAPI, with accounts and food preferences in Postgres (preferences encrypted), and chats and store results held in memory only: nothing is kept on the server's disk.
 
 ## Run it
 
@@ -10,8 +10,12 @@ Python 3.12, from the repo root:
 cd backend
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+docker compose up -d                 # Postgres 18 on 127.0.0.1:5433 (docker-compose.yml)
+alembic upgrade head                 # create the tables and the two database users
 uvicorn app.main:app --reload        # http://localhost:8000, API docs at /docs
 ```
+
+Before the first run, copy the database settings from `.env.example` into the repo-root `.env` and fill them in (Storage, below): two passwords you pick for the database users, the same two in the app's URLs, and an encryption key from `python -c "from app.crypto import new_key; print(new_key())"`, set as `PANTRYPATH_PROFILE_KEYS=v1:<key>`. The backend won't start without them, and says which one is missing.
 
 Then start the frontend (`frontend/README.md`), open it and create an account. This is **demo mode**: it needs no model server, store keys or DVC data.
 
@@ -53,9 +57,9 @@ Good to know when running it:
 A shopper signs up with a name, a username and a password, sets their food preferences (allergies, diet, ZIP, household size, needs we can't check yet), logs out, and logs in again from any browser. Several people can use one browser by logging out and in. Everything about accounts is in `app/auth.py`:
 
 - **Passwords** are hashed with scrypt from Python's standard library (no extra package), with a random salt per password. They are checked in constant time and never logged or sent back. A login with an unknown username costs the same time as a wrong password, and both get the same message.
-- **A login** is a random token in a cookie named `pantrypath_login`. It is `HttpOnly`, so page scripts can't read it, and `SameSite=Lax`, so other sites can't send it with their requests. The server stores only the token's SHA-256, so the files in `data/logins/` can't be used to log in. A login lasts 30 days (`PANTRYPATH_LOGIN_DAYS`). Logging out deletes it on the server.
+- **A login** is a random token in a cookie named `pantrypath_login`. It is `HttpOnly`, so page scripts can't read it, and `SameSite=Lax`, so other sites can't send it with their requests. The database stores only the token's SHA-256, so its rows can't be used to log in. A login lasts 30 days (`PANTRYPATH_LOGIN_DAYS`). Logging out deletes it on the server and ends the user's open chats (in every browser: chats belong to the user).
 - **Five wrong passwords** for one username within ten minutes block that username's logins until the window passes. The count is kept in memory.
-- **Changing the password** logs out every other browser on that account. **Deleting the account** asks for the password again, then deletes the account, its logins and its chats.
+- **Changing the password** logs out every other browser on that account. **Deleting the account** asks for the password again, then deletes the account, its logins, its preferences and its chats.
 - **Every chat and search belongs to one user.** Another user's chat or search answers "not found", exactly like one that doesn't exist. `tests/test_auth.py` checks each endpoint.
 
 Behind HTTPS, set `PANTRYPATH_SECURE_COOKIES=true` so the cookie is only ever sent over HTTPS. Leave it off for `http://localhost`.
@@ -73,19 +77,26 @@ Behind HTTPS, set `PANTRYPATH_SECURE_COOKIES=true` so the cookie is only ever se
 3. **The assistant asks or confirms.** It asks for a missing dish or ZIP, or shows a **confirm card**. The shopper can edit the card; saved allergens stay locked, and the server applies them again whatever the card sends. Only the newest card can be searched.
 4. **The search runs in the background.** `POST /api/sessions/{id}/search` starts `build_result` and then A3 in a thread. The app polls `GET /api/jobs/{id}` and shows the stages.
 5. **A new message after a search starts a new request**, so the old dish isn't read again.
+6. **The chat ends** after `PANTRYPATH_CHAT_IDLE_MIN` minutes without a message (default 20), when the shopper logs out or deletes it, or when the server restarts. Chats are never saved. Only what's saved in Preferences carries over to the next chat.
 
-## Storage: JSON files
+## Storage: Postgres, and memory
 
-```
-backend/data/
-  users/<id>.json       username, password hash, name and food preferences
-  logins/<hash>.json    one logged-in browser: user id and expiry (named by the token's hash)
-  sessions/<id>.json    one chat: user_id, title, messages (text, confirm cards, searches)
-```
+| What | Where | Kept |
+|---|---|---|
+| Accounts: username, password hash | `auth.accounts` | until the account is deleted |
+| Logins: the token's SHA-256, expiry | `auth.logins` | until logout, expiry, a password change elsewhere, or account deletion |
+| Food preferences, **encrypted** | `profile.profiles` | until the account is deleted |
+| Chats | this process's memory (`app/chat_memory.py`) | until 20 idle minutes, logout, deletion, or a restart |
+| Search results | this process's memory (`app/jobs.py`) | 60 minutes |
+| Failed-login counts | this process's memory | 10 minutes |
 
-One readable file per record (`app/store.py`). Writes go to a temporary file that is then renamed over the old one, so a crash never leaves half a file, and one lock serializes read-modify-write. `backend/data/` is gitignored; set `PANTRYPATH_DATA_DIR` to keep it elsewhere. A `profiles/` folder from the first version, before accounts, isn't read any more and can be deleted.
+**Two schemas, two database users.** The app connects twice (`app/db.py`): as `pp_auth`, which can use only the `auth` schema, and as `pp_profile`, which can use only `profile`. Neither can read the other's tables or change any table's shape. Deleting an account deletes its logins and profile with it (`ON DELETE CASCADE`). The tables and both users come from the migrations in `migrations/` (`alembic upgrade head`), run as the database owner (`PANTRYPATH_DB_OWNER_URL`), never by the app. The first migration creates the two users with SQL, with the passwords in `PANTRYPATH_DB_AUTH_PASSWORD` and `PANTRYPATH_DB_PROFILE_PASSWORD`: on Cloud SQL, users made with gcloud or the console join `cloudsqlsuperuser`, which can read every table.
 
-**Store data is never written here.** Kroger's terms forbid storing its data (`docs/data-pipeline-handoff.md`, section 10). A search's result and answer live in this process's memory (`app/jobs.py`) for `PANTRYPATH_RESULT_TTL_MIN` minutes (default 60, never past `result.json`'s `expires_at`). They are never logged. A chat keeps only the confirmed request, the dish's name and whether the search worked. When the results are gone (expired, or the server restarted), the app offers to search again with one click. `tests/test_api.py` checks that no product or store name reaches the JSON files.
+**Preferences are encrypted by the app** (`app/crypto.py`) before they reach the database: AES-256-GCM, with the user's id bound in, so a profile copied onto another account doesn't decrypt, and a changed byte is caught. The database holds only ciphertext and the version of the key that made it. Keys come from `PANTRYPATH_PROFILE_KEYS`, newest first (`v2:<key>,v1:<key>`): the first encrypts, all of them decrypt. To change the key, put a new one first and keep the old one until every profile has been saved again. A profile that can't be decrypted (its key is gone) answers 500, and is never shown as blank preferences. **Losing every key loses every profile**: keep them in Secret Manager in production, and back them up.
+
+The profile is stored as one value, `{"format": 1, "prefs": {...}}`, so new fields (for example, where a saved allergy came from) need no table change.
+
+**Store data is never saved.** Kroger's terms forbid storing its data (`docs/data-pipeline-handoff.md`, section 10). A search's result and answer live in this process's memory (`app/jobs.py`) for `PANTRYPATH_RESULT_TTL_MIN` minutes (default 60, never past `result.json`'s `expires_at`). They are never logged. A chat keeps only the confirmed request, the dish's name and whether the search worked. When the results are gone (expired, or the server restarted), the app offers to search again with one click. `tests/test_api.py` checks that no product or store name reaches the database, and `tests/test_storage.py` that no chat does.
 
 ## API
 
@@ -96,13 +107,13 @@ Everything except `config`, `health` and `/api/auth/*` needs a login, and answer
 | `GET /api/config` | Mode, engine info, allergen, diet and need labels for the forms |
 | `POST /api/auth/register` | `{name, username, password}`: create an account and log it in |
 | `POST /api/auth/login` | `{username, password}`: log in (sets the cookie) |
-| `POST /api/auth/logout` | Log out (ends the login on the server, clears the cookie) |
+| `POST /api/auth/logout` | Log out (ends the login on the server and the user's open chats, clears the cookie) |
 | `GET /api/me` | The logged-in user and their preferences |
 | `PUT /api/me/preferences` | `{name, zip, avoid, diet, servings, needs}`: save preferences |
 | `POST /api/me/password` | `{current_password, new_password}`: change the password |
-| `POST /api/me/delete` | `{password}`: delete the account, its logins and its chats |
-| `GET /api/sessions`, `POST /api/sessions` | List your chats, start one |
-| `GET`, `DELETE /api/sessions/{id}` | Read a chat with its messages, delete it |
+| `POST /api/me/delete` | `{password}`: delete the account, its logins, preferences and chats |
+| `GET /api/sessions`, `POST /api/sessions` | List your chats that are still open (in memory), start one |
+| `GET`, `DELETE /api/sessions/{id}` | Read a chat with its messages, delete it; 404 once it has ended |
 | `POST /api/sessions/{id}/messages` | `{text}`: the shopper's message and the assistant's reply |
 | `POST /api/sessions/{id}/search` | `{message_id, query, zip, avoid, diet, servings}`: search a confirm card |
 | `POST /api/sessions/{id}/messages/{message_id}/rerun` | Search a confirmed request again |
@@ -118,7 +129,12 @@ Environment variables, or the repo-root `.env`:
 | Variable | Default | |
 |---|---|---|
 | `PANTRYPATH_MODE` | `demo` | `demo` or `live` |
-| `PANTRYPATH_DATA_DIR` | `backend/data` | Where the JSON files go |
+| `PANTRYPATH_DB_AUTH_URL` | required | Postgres as `pp_auth`, e.g. `postgresql+psycopg://pp_auth:<password>@127.0.0.1:5433/pantrypath` |
+| `PANTRYPATH_DB_PROFILE_URL` | required | Postgres as `pp_profile`, the same way |
+| `PANTRYPATH_PROFILE_KEYS` | required | The keys that encrypt preferences, newest first: `v1:<base64 of 32 bytes>` |
+| `PANTRYPATH_CHAT_IDLE_MIN` | `20` | Minutes a chat stays in memory after its last message |
+| `PANTRYPATH_DB_OWNER_URL` | for migrations | Postgres as the owner; only `alembic` uses it |
+| `PANTRYPATH_DB_AUTH_PASSWORD`, `PANTRYPATH_DB_PROFILE_PASSWORD` | for the first migration | The passwords it gives `pp_auth` and `pp_profile` |
 | `PANTRYPATH_LOGIN_DAYS` | `30` | Days a login lasts |
 | `PANTRYPATH_SECURE_COOKIES` | `false` | `true` when served over HTTPS |
 | `PANTRYPATH_RESULT_TTL_MIN` | `60` | Minutes a search's results stay in memory |
@@ -130,9 +146,12 @@ Environment variables, or the repo-root `.env`:
 
 ```bash
 pip install -r requirements-dev.txt
-pytest                    # 69 tests, no network or model needed
+docker compose up -d      # the tests need the Docker Postgres
+pytest                    # 114 tests (14 more need the live packages), no network or model
 ruff check .
 ```
+
+Tests that need Postgres fail, saying how to start it, when none answers at `PANTRYPATH_TEST_DB_URL` (default the Docker one). They never touch the development database: `tests/pg.py` makes a throwaway database with its own two users, migrated with the real migrations, and drops it at the end. `tests/test_migrations.py` checks the schemas, the users' rights and the cascading deletes; `tests/test_crypto.py` the encryption; `tests/test_storage.py` what is saved where, restarts, key changes and startup errors.
 
 `tests/test_stronger_model.py` covers "Ask a stronger model": the route and the messages it adds (with the demo engine and a stand-in), the live engine's client choice and error messages, and how `.env` turns it on; its live and `.env` tests skip without the live packages.
 
@@ -140,8 +159,8 @@ ruff check .
 
 ## Limits
 
-- **One process.** The JSON files, the in-memory results and the failed-login counts belong to one uvicorn worker. Several workers, or several Cloud Run instances, would each see different data. Cloud Run's disk is also wiped on every new instance. Deploying it needs one instance with a mounted volume, or a move to a hosted store later.
-- **No "forgot password".** There is no email, so a lost password can't be reset from the app. Whoever runs the server can delete that user's file in `data/users/`.
+- **One process.** Chats, search results and failed-login counts live in one uvicorn worker's memory. Several workers, or several Cloud Run instances, would each have their own: run one worker, and deploy with at most one instance. Accounts and preferences are in Postgres, so they survive restarts and new instances.
+- **No "forgot password".** There is no email, so a lost password can't be reset from the app. Whoever runs the database can delete that user's row in `auth.accounts`.
 - **The search starts when the shopper confirms**, not while they chat as `docs/project-plan.md` plans.
 - **The route is a Google Maps link** through the stores, nearest first, not an optimized route.
 - `scripts/build_demo_catalog.py` rebuilds the demo dishes from `ml/evalsets/a3_dev.jsonl` (the dev split only).

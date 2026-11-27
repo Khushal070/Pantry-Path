@@ -15,7 +15,7 @@ Built by Project Team 11.
 - A self-hosted open-weight language model reads the conversation and adapts the recipe to your diet.
 - Deterministic diet rules, not the model, decide whether a product fits a diet. Unknown evidence is never shown as safe.
 - Searches start with the first message, and everything found is cached for the session, so changing your mind does not repeat any search.
-- Accounts with a username and password, each with saved food preferences (allergies, diet, ZIP), stored as JSON files with no database. No payments, and live data only.
+- Accounts with a username and password, each with saved food preferences (allergies, diet, ZIP), stored in Postgres (the preferences encrypted); chats are never saved. No payments, and live data only.
 
 Diets covered: allergies, celiac, pregnancy, medical (for example low-sodium or diabetic), religious (for example halal or kosher) and lifestyle (for example vegan).
 
@@ -42,7 +42,7 @@ Large datasets are not stored in git. They are versioned with DVC.
 
 ## Repository structure
 
-- `backend/` - FastAPI chat API: accounts, preferences and chats saved as JSON files, the chat flow (request parsing, confirm, store search, answer), store results in memory only (see [backend/README.md](backend/README.md))
+- `backend/` - FastAPI chat API: accounts and encrypted preferences in Postgres, chats in memory only, the chat flow (request parsing, confirm, store search, answer), store results in memory only (see [backend/README.md](backend/README.md))
 - `frontend/` - React chat app: login, preferences, chat, shopping list, stores and product checks (see [frontend/README.md](frontend/README.md))
 - `ml/` - prompts, model and serving configuration, evaluation and fine-tuning scripts (see [docs/model-pipeline-report.md](docs/model-pipeline-report.md) and the [guideline compliance table](ml/README.md#guideline-compliance))
 - `data/` - diet rules, demo personas, golden evaluation sets, DVC pointers

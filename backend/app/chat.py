@@ -1,4 +1,5 @@
-"""The chat: a user's sessions, messages, confirm cards and searches, over the JSON store.
+"""The chat: a user's sessions, messages, confirm cards and searches, in memory only
+(chat_memory.py): chats are never saved, and end after PANTRYPATH_CHAT_IDLE_MIN idle minutes.
 
 Every method takes the logged-in user (main.py loads it from the login cookie). A chat
 that belongs to someone else is "not found", exactly like one that doesn't exist.
@@ -23,17 +24,19 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.chat_memory import ChatMemory
 from app.drafts import build_draft, confirmed_request
 from app.engines.base import Engine
 from app.jobs import Jobs, JobState
 from app.schemas import SearchIn
-from app.store import JsonStore
 from app.vocab import allergen_label, join_words
 from pantrypath_core.result import RequestInfo
 
 log = logging.getLogger(__name__)
 
 NEW_CHAT = "New chat"
+# Also for a chat that never existed or is someone else's: they look the same
+CHAT_ENDED = "This chat has ended: chats aren't saved. Start a new one."
 User = dict[str, Any]
 
 
@@ -83,14 +86,14 @@ def request_line(request: dict[str, Any], servings: int | None = None) -> str:
 
 
 class ChatService:
-    def __init__(self, store: JsonStore, engine: Engine, jobs: Jobs):
-        self.store, self.engine, self.jobs = store, engine, jobs
+    def __init__(self, chats: ChatMemory, engine: Engine, jobs: Jobs):
+        self.chats, self.engine, self.jobs = chats, engine, jobs
 
     # ------------------------------------------------------------ sessions
 
     def list_sessions(self, user: User) -> list[dict[str, Any]]:
         out = []
-        for s in self.store.all("sessions"):
+        for s in self.chats.all():
             if s.get("user_id") != user["id"]:
                 continue
             last = next((m["text"] for m in reversed(s["messages"]) if m["text"]), "")
@@ -103,26 +106,26 @@ class ChatService:
         session = {"id": f"s_{secrets.token_hex(6)}", "user_id": user["id"],
                    "title": NEW_CHAT, "created_at": now, "updated_at": now,
                    "context_start": 0, "messages": []}
-        self.store.put("sessions", session["id"], session)
+        self.chats.put(session["id"], session)
         return session
 
     def get_session(self, user: User, session_id: str) -> dict[str, Any]:
-        session = self.store.get("sessions", session_id)
+        session = self.chats.get(session_id)
         if session is None or session.get("user_id") != user["id"]:
-            raise NotFoundError(f"No chat {session_id}")
+            raise NotFoundError(CHAT_ENDED)
         return session
 
     def delete_session(self, user: User, session_id: str) -> None:
-        with self.store.locked():
+        with self.chats.locked():
             self.get_session(user, session_id)
-            self.store.delete("sessions", session_id)
+            self.chats.delete(session_id)
 
     def delete_all(self, user_id: str) -> None:
         """Every chat of a user (their account is being deleted)."""
-        with self.store.locked():
-            for s in self.store.all("sessions"):
+        with self.chats.locked():
+            for s in self.chats.all():
                 if s.get("user_id") == user_id:
-                    self.store.delete("sessions", s["id"])
+                    self.chats.delete(s["id"])
 
     def _update(self, user: User, session_id: str,
                 change: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
@@ -130,11 +133,11 @@ class ChatService:
             change(session)
             session["updated_at"] = _now()
 
-        with self.store.locked():
+        with self.chats.locked():
             self.get_session(user, session_id)
-            session = self.store.update("sessions", session_id, touched)
+            session = self.chats.update(session_id, touched)
         if session is None:
-            raise NotFoundError(f"No chat {session_id}")
+            raise NotFoundError(CHAT_ENDED)
         return session
 
     # ------------------------------------------------------------ the chat
@@ -186,7 +189,7 @@ class ChatService:
     def start_search(self, user: User, session_id: str,
                      body: SearchIn) -> tuple[dict[str, Any], JobState]:
         """Search the request on a confirm card (as the shopper left it)."""
-        with self.store.locked():
+        with self.chats.locked():
             session = self.get_session(user, session_id)
             messages = session["messages"]
             card = next((m for m in messages if m["id"] == body.message_id), None)
@@ -224,7 +227,7 @@ class ChatService:
     def rerun_search(self, user: User, session_id: str,
                      message_id: str) -> tuple[dict[str, Any], JobState]:
         """Search a confirmed request again (its results expired, or it failed)."""
-        with self.store.locked():
+        with self.chats.locked():
             session = self.get_session(user, session_id)
             message = next((m for m in session["messages"] if m["id"] == message_id), None)
             if message is None or message["kind"] != "search":
@@ -255,7 +258,7 @@ class ChatService:
         if not offer.get("available"):
             raise UnavailableError("No stronger model is set up on this server.")
         label = offer.get("label") or "a stronger model"
-        with self.store.locked():
+        with self.chats.locked():
             session = self.get_session(user, session_id)
             message = next((m for m in session["messages"] if m["id"] == message_id), None)
             if message is None or message["kind"] != "search":
@@ -301,11 +304,11 @@ class ChatService:
                         m["data"]["status"] = done.status
                         m["data"]["error"] = done.error
                         m["data"]["error_kind"] = done.error_kind
-                        if done.outcome:   # the dish's name only: no store data on disk
+                        if done.outcome:   # the dish's name only: no store data in the chat
                             m["data"]["dish"] = done.outcome.result["dish"]["name"]
 
-            if self.store.update("sessions", session_id, change) is None:
-                log.info("Chat %s was deleted before its search finished", session_id)
+            if self.chats.update(session_id, change, touch=False) is None:
+                log.info("Chat %s ended before its search finished", session_id)
 
         # stronger is passed only when asked for, so an engine without the option (or a
         # test stand-in) keeps working

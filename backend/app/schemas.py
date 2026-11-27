@@ -1,5 +1,5 @@
-"""Request and response bodies of the API. Users and chats are stored as these models
-dumped to JSON (store.py)."""
+"""Request and response bodies of the API. Preferences are saved, encrypted, as this model
+dumped to JSON (auth.py); chats are kept in memory in the Session shape (chat_memory.py)."""
 
 from datetime import datetime
 from typing import Any, Literal

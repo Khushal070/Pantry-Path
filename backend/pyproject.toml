@@ -1,7 +1,7 @@
 [project]
 name = "pantrypath-backend"
 version = "0.1.0"
-description = "Pantry Path chat API: profiles and chats as JSON files, searches in memory"
+description = "Pantry Path chat API: accounts and encrypted preferences in Postgres, chats and searches in memory"
 requires-python = ">=3.11"
 # Dependencies are pinned in requirements*.txt (demo, live, dev)
 dependencies = []

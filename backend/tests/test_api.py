@@ -1,6 +1,4 @@
-import json
-
-from conftest import PREFS, make_client, signup, wait_for
+from conftest import PREFS, make_client, saved_text, signup, wait_for
 
 
 def new_chat(client):
@@ -70,15 +68,16 @@ def test_saved_preferences_change_the_next_card(user_client):
     assert card["data"]["request"]["diet"] == "none"
 
 
-def test_store_results_are_never_written_to_disk(tmp_path):
-    with make_client(tmp_path) as client:
+def test_store_results_are_never_saved():
+    with make_client() as client:
         signup(client)
         chat = new_chat(client)
         card = say(client, chat, "pad thai for 2")
         job = wait_for(client, confirm(client, chat, card).json()["job"]["id"])
         names = {p["name"] for i in job["result"]["ingredients"] for p in i["products"]}
         names |= {s["name"] for s in job["result"]["stores"]}
-    saved = "".join(p.read_text() for p in (tmp_path / "data").rglob("*.json"))
+        # the database, and the profile once decrypted
+        saved = saved_text() + str(client.app.state.accounts.find("demo"))
     assert names and not [n for n in names if n in saved]
 
 
@@ -138,8 +137,8 @@ def test_a_new_request_after_a_search_starts_afresh(user_client):
     assert "egg" not in card["data"]["request"]["avoid"]   # the old chat isn't read again
 
 
-def test_expired_results_can_be_searched_again(tmp_path):
-    with make_client(tmp_path, result_ttl_minutes=0) as client:
+def test_expired_results_can_be_searched_again():
+    with make_client(result_ttl_minutes=0) as client:
         signup(client)
         chat = new_chat(client)
         card = say(client, chat, "hummus")
@@ -174,13 +173,3 @@ def test_bad_requests(user_client):
     assert user_client.delete(f"/api/sessions/{chat}").status_code == 204
     assert user_client.get(f"/api/sessions/{chat}").status_code == 404
 
-
-def test_sessions_are_plain_json_files(tmp_path):
-    with make_client(tmp_path) as client:
-        user = signup(client)
-        chat = new_chat(client)
-        say(client, chat, "hummus")
-    saved = json.loads((tmp_path / "data" / "sessions" / f"{chat}.json").read_text())
-    assert saved["user_id"] == user["id"]
-    assert [m["kind"] for m in saved["messages"]] == ["text", "confirm"]
-    assert (tmp_path / "data" / "users" / f"{user['id']}.json").is_file()
