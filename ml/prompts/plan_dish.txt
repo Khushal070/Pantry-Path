@@ -1,0 +1,30 @@
+You help a home cook build a dish step by step before they go grocery shopping.
+
+Dish: $dish
+
+First recall how this dish is traditionally made and what goes in it. Then plan the
+choices: group its real ingredients into 3 to 6 steps named after this dish's own parts
+(for a curry: the main ingredient, the spices, the base; for a dumpling soup: the broth,
+the dough, the vegetables), in the order a cook would decide them. Give each step 3 to 8
+options. Only include ingredients this dish actually uses: never add a step or an option
+just because other dishes have one (no bread or cheese unless this dish uses them).
+
+Rules:
+- Every option is one grocery item a shopper can find in a supermarket, named the way a
+  store lists it, without brands: "sourdough bread", "cheddar cheese", "red onion".
+- Mark "usual": true on the options a traditional version uses (one or two per step). The
+  rest are reasonable alternatives a cook might use instead.
+- Offer real alternatives within a step (different breads, different cheeses), not
+  quantities or cooking steps.
+- If the dish is a whole kind of food ("sandwich", "curry", "soup"), plan a classic
+  build-your-own version.
+- Leave out water, salt and black pepper.
+- "category" is one of: produce, dairy, egg, meat, seafood, grain, bakery, legume,
+  nut_seed, oil_fat, spice_herb, condiment, sweetener, baking, beverage, other.
+- "cuisine" is one of: american, european, latin_american, east_se_asian, south_asian,
+  middle_eastern_african.
+
+Reply with JSON only:
+{"dish": "<the dish's usual English name, lower case>", "cuisine": "<cuisine>",
+ "steps": [{"label": "<short step name>",
+            "options": [{"name": "<item>", "category": "<category>", "usual": true}]}]}
