@@ -74,6 +74,7 @@ ollama pull qwen3:4b-q4_K_M        # a local model server (tests don't need one)
 | `prompts/answer.txt` | The A3 prompt, variant `hybrid` (`answer/2`: text around the decided list; the default) |
 | `prompts/answer_swaps.txt` | Variant `hybrid_swaps` (`answer/3`): the hybrid plus an explicit "use X instead of Y" list and the rule to write the substitute's name, never the original's (`evaluate_a3 --variant hybrid_swaps`) |
 | `prompts/answer_model_list.txt` | The first A3 prompt, variant `model_list` (`answer/1`: the model writes the whole list), kept so its dev run is reproducible (`evaluate_a3 --variant model_list`) |
+| `prompts/plan_dish.txt` | The plan prompt for the backend's guided builds (`plan_dish/1`): the steps and options for a dish outside the catalog and the templates. Not part of the champion or the evaluations yet (see Plan: choices for a guided build) |
 
 Environment overrides for one run: `MODEL_SERVER_URL` (base URL without `/v1`), `MODEL_NAME` (the candidate's model id), `MLFLOW_TRACKING_URI`. For the private Cloud Run service: `MODEL_SERVER_TOKEN` (a fixed bearer token; one from `gcloud auth print-identity-token` lasts about an hour, fine for a script) or `MODEL_SERVER_AUTH=google` (the caller mints and refreshes Google ID tokens itself; use this for the backend).
 
@@ -135,6 +136,14 @@ The model never sets a verdict, and the prompt shows it only the names of safe p
 The evaluation sets hold one synthetic `result.json` per catalog dish: synthetic stores and products (never Kroger data), the same test dishes as A1, each validated against `pantrypath_core.result.Result`. Metrics are scored on the model's reply **before** repair; `final_clean_rate` and valid JSON are hard gates, verdict, substitute and text safety, coverage and missing-ingredient handling are goals (`gates.yaml`).
 
 In production, A3's client has **no reply cache**: its prompt holds Kroger product names, and Kroger's terms forbid keeping them.
+
+## Plan: choices for a guided build (not evaluated yet)
+
+The backend's guided builds (`backend/README.md`, "Guided builds") let the shopper choose a dish's ingredients step by step. A kind of food ("sandwich") uses a hand-written template and a catalog dish uses its catalog profile, so neither calls a model. Any other dish gets **one** call with `prompts/plan_dish.txt` (`plan_dish/1`) on the champion's A2 client (`runtime.load().a2_client`: same model, settings and reply cache as A2). The reply is JSON with 3 to 6 steps of 3 to 8 options, each with a name, a catalog category and whether it is usual; the schema is `PLAN_SCHEMA` in `backend/app/plans.py`, which also cleans the reply and screens every option against the shopper's allergens and diet with the diet rules. If the prompt file is missing, or the reply is unusable, the backend falls back to the confirm card (A2's path as before).
+
+**Status:** the prompt is hand-written and has had one live check only (qwen3-4b, 2026-11-27). Its first version gave example steps ("base or bread", "cheese") that the 4B model copied into dal dhokli; the current one asks for the dish's own parts and got dal, dhokli dough, spices, vegetables, oil (groundnut oil left out for a peanut-avoider), with one odd option ("milk flour"). Before relying on it: a small dev set of dishes (vague and specific, across cuisines), checks for valid JSON, categories, plausible options and no clashing usual options, a prompt version in the registry, and gates like A2's.
+
+**A3 and the guided list.** For a guided search the backend gives A3 only the shopper's chosen product per item (so `answer.decide` buys exactly the pick) and checks A3's steps and summary against the final list with a food vocabulary (`backend/app/stepcheck.py`). If they name a food that isn't on the list, A3 is asked once more with a correction in its `tweaks` ("use only these ingredients …; do not mention …"); what is still stray is repaired. On 2026-11-27, qwen3-4b wrote "stir in coconut cream" for a quiche whose list had milk, on both tries; the repair dropped that step. Worth an A3 goal: steps that name only listed items.
 
 ## Running everything on a laptop (no Explorer)
 
